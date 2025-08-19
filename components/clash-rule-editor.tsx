@@ -5,12 +5,17 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Pencil, Save } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { AlertTriangle, CheckCircle } from "lucide-react";
 
 interface ClashRuleEditorProps {
   value: string;
   onChange: (value: string) => void;
   highlightedLine?: number;
   className?: string;
+  ruleCount?: number;
+  hasError?: boolean;
+  errorCount?: number;
 }
 
 const CLASH_RULE_TYPES = [
@@ -43,9 +48,15 @@ const CLASH_RULE_TYPES = [
 
 const CLASH_POLICIES = ["DIRECT", "PROXY", "REJECT", "PASS"];
 
-export function ClashRuleEditor(
-  { value, onChange, highlightedLine, className }: ClashRuleEditorProps,
-) {
+export function ClashRuleEditor({
+  value,
+  onChange,
+  highlightedLine,
+  className,
+  ruleCount,
+  hasError,
+  errorCount,
+}: ClashRuleEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
   const [lineCount, setLineCount] = useState(1);
@@ -92,14 +103,7 @@ export function ClashRuleEditor(
             <span className="w-12 px-2 text-right text-xs text-muted-foreground/60 select-none font-mono">
               {lineNumber}
             </span>
-            <span
-              className={cn(
-                "flex-1 px-2",
-                isEditing && "text-transparent",
-              )}
-            >
-              &nbsp;
-            </span>
+            <span className="flex-1 px-2">&nbsp;</span>
           </div>
         );
       }
@@ -121,7 +125,8 @@ export function ClashRuleEditor(
             <span
               className={cn(
                 "flex-1 px-2 font-mono text-sm italic opacity-75",
-                isEditing
+                // 在编辑模式下使文本透明
+                isEditingMode
                   ? "text-transparent"
                   : "text-green-600 dark:text-green-400",
               )}
@@ -160,7 +165,8 @@ export function ClashRuleEditor(
               <span
                 className={cn(
                   "font-semibold",
-                  isEditing
+                  // 在编辑模式下使文本透明
+                  isEditingMode
                     ? "text-transparent"
                     : (isValidRuleType
                       ? getRuleTypeColor(ruleType)
@@ -172,7 +178,7 @@ export function ClashRuleEditor(
               <span
                 className={cn(
                   "text-muted-foreground/70",
-                  isEditing && "text-transparent",
+                  isEditingMode && "text-transparent",
                 )}
               >
                 ,
@@ -180,7 +186,7 @@ export function ClashRuleEditor(
               <span
                 className={cn(
                   "mx-1",
-                  isEditing ? "text-transparent" : "text-foreground/90",
+                  isEditingMode ? "text-transparent" : "text-foreground/90",
                 )}
               >
                 {content}
@@ -190,7 +196,7 @@ export function ClashRuleEditor(
                   <span
                     className={cn(
                       "text-muted-foreground/70",
-                      isEditing && "text-transparent",
+                      isEditingMode && "text-transparent",
                     )}
                   >
                     ,
@@ -198,7 +204,7 @@ export function ClashRuleEditor(
                   <span
                     className={cn(
                       "font-medium ml-1",
-                      isEditing
+                      isEditingMode
                         ? "text-transparent"
                         : (isValidPolicy
                           ? getPolicyColor(policy)
@@ -209,7 +215,7 @@ export function ClashRuleEditor(
                   </span>
                 </>
               )}
-              {hasError && !isEditing && (
+              {hasError && !isEditingMode && (
                 <span className="ml-2 text-xs text-red-500 dark:text-red-400 opacity-75">
                   ⚠ {!isValidRuleType && "Invalid rule type"}
                   {!isValidRuleType && !isValidPolicy && " • "}
@@ -238,14 +244,14 @@ export function ClashRuleEditor(
           <span
             className={cn(
               "flex-1 px-2 font-mono text-sm",
-              isEditing
+              isEditingMode
                 ? "text-transparent"
                 : "text-amber-700 dark:text-amber-300",
             )}
           >
             {line}
           </span>
-          {trimmedLine && !isEditing && (
+          {trimmedLine && !isEditingMode && (
             <span className="text-xs text-amber-600 dark:text-amber-400 px-2 self-center opacity-75">
               ⚠ Incomplete
             </span>
@@ -334,61 +340,62 @@ export function ClashRuleEditor(
     setIsEditing(false);
   };
 
+  // 计算规则数量
+  const getRuleCount = () => {
+    if (ruleCount !== undefined) return ruleCount;
+    return value.split("\n").filter((line) =>
+      line.trim() && !line.trim().startsWith("#")
+    ).length;
+  };
+
+  // 检查是否有错误
+  const hasValidationErrors = () => {
+    if (hasError !== undefined) return hasError;
+    return false;
+  };
+
   return (
     <div
       className={cn(
-        "relative h-full border border-border rounded-lg overflow-hidden bg-card",
+        "flex flex-col h-full border border-border overflow-hidden bg-card rounded-none",
         "hover:shadow-sm transition-all duration-200",
         "focus-within:ring-1 focus-within:ring-ring/30 focus-within:border-ring/50",
         className,
       )}
     >
-      <div
-        ref={highlightRef}
-        className={cn(
-          "absolute inset-0 overflow-auto font-mono text-sm leading-6 pointer-events-none whitespace-pre-wrap break-words",
-          "p-3 pl-0 pr-3",
-        )}
-        style={{
-          scrollbarWidth: "none",
-          msOverflowStyle: "none",
-        }}
-      >
-        <div className="min-h-full">
-          {highlightSyntax(isEditing ? localValue : value)}
+      {/* 顶部工具栏 */}
+      <div className="flex items-center justify-between p-3 border-b border-border bg-muted/50">
+        <div className="flex items-center gap-4">
+          {/* 规则配置信息 */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-foreground">
+              规则配置
+            </span>
+            {/* 行数统计/规则统计 */}
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs rounded-md">
+                {lineCount} 行 / {getRuleCount()} 条规则
+              </Badge>
+              {hasValidationErrors()
+                ? (
+                  <Badge variant="destructive" className="text-xs rounded-md">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    {errorCount || 0} 个问题
+                  </Badge>
+                )
+                : (
+                  <Badge
+                    variant="outline"
+                    className="text-xs text-green-600 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20 rounded-md"
+                  >
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    有效
+                  </Badge>
+                )}
+            </div>
+          </div>
         </div>
-      </div>
 
-      <textarea
-        ref={textareaRef}
-        value={isEditing ? localValue : value}
-        onChange={(e) =>
-          isEditing ? setLocalValue(e.target.value) : onChange(e.target.value)}
-        onScroll={handleScroll}
-        onKeyDown={handleKeyDown}
-        className={cn(
-          "absolute inset-0 w-full h-full font-mono text-sm leading-6 resize-none outline-none",
-          "bg-transparent caret-foreground",
-          // 在非编辑模式下隐藏文本
-          !isEditing && "text-transparent",
-          // 在编辑模式下确保文本可见
-          isEditing && "text-foreground",
-          "p-3 pl-12 pr-4",
-          "scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border/30",
-        )}
-        style={{
-          caretColor: "hsl(var(--foreground))",
-        }}
-        spellCheck={false}
-        autoComplete="off"
-        autoCorrect="off"
-        autoCapitalize="off"
-        placeholder="输入您的 CLASH 规则配置..."
-        aria-label="CLASH 规则编辑器"
-        readOnly={!isEditing}
-      />
-
-      <div className="absolute top-2 right-2 flex items-center gap-2">
         {isEditing
           ? (
             <Button
@@ -414,14 +421,54 @@ export function ClashRuleEditor(
           )}
       </div>
 
-      <div className="absolute bottom-2 right-2 flex items-center gap-2 text-xs text-muted-foreground/80 bg-background/95 backdrop-blur-sm px-3 py-1.5 rounded-md border border-border/50 shadow-sm">
-        <span className="font-mono">{lineCount} 行</span>
-        <span className="text-muted-foreground/50">•</span>
-        <span className="font-mono">
-          {value.split("\n").filter((line) =>
-            line.trim() && !line.trim().startsWith("#")
-          ).length} 规则
-        </span>
+      {/* 编辑器主体区域 */}
+      <div className="flex-1 relative">
+        <div
+          ref={highlightRef}
+          className={cn(
+            "absolute inset-0 overflow-auto font-mono text-sm leading-6 pointer-events-none whitespace-pre-wrap break-words",
+            "p-3 pl-0 pr-3",
+          )}
+          style={{
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+          }}
+        >
+          <div className="min-h-full">
+            {highlightSyntax(isEditing ? localValue : value, isEditing)}
+          </div>
+        </div>
+
+        <textarea
+          ref={textareaRef}
+          value={isEditing ? localValue : value}
+          onChange={(e) =>
+            isEditing
+              ? setLocalValue(e.target.value)
+              : onChange(e.target.value)}
+          onScroll={handleScroll}
+          onKeyDown={handleKeyDown}
+          className={cn(
+            "absolute inset-0 w-full h-full font-mono text-sm leading-6 resize-none outline-none",
+            "bg-transparent caret-foreground",
+            // 在非编辑模式下隐藏文本
+            !isEditing && "text-transparent",
+            // 在编辑模式下确保文本可见
+            isEditing && "text-foreground",
+            "p-3 pl-12 pr-4",
+            "scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border/30",
+          )}
+          style={{
+            caretColor: "hsl(var(--foreground))",
+          }}
+          spellCheck={false}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          placeholder="输入您的 CLASH 规则配置..."
+          aria-label="CLASH 规则编辑器"
+          readOnly={!isEditing}
+        />
       </div>
     </div>
   );

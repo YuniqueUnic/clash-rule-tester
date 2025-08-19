@@ -668,45 +668,15 @@ export default function ClashRuleTester() {
         {/* Middle Column: Rule Editor */}
         <div className="flex-1">
           <div className="h-full bg-card">
-            <div className="p-4 border-b border-border">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-foreground">
-                  规则配置
-                </h3>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-xs rounded-md">
-                    {ruleEngine.getRuleCount()} 条规则
-                  </Badge>
-                  {validationResults.length === 0
-                    ? (
-                      <Badge
-                        variant="outline"
-                        className="text-xs text-green-600 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20 rounded-md"
-                      >
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        有效
-                      </Badge>
-                    )
-                    : (
-                      <Badge
-                        variant="destructive"
-                        className="text-xs rounded-md"
-                      >
-                        <AlertTriangle className="h-3 w-3 mr-1" />
-                        {validationResults.length} 个问题
-                      </Badge>
-                    )}
-                </div>
-              </div>
-            </div>
-            <div className="h-[calc(100%-80px)] p-4">
-              <ClashRuleEditor
-                value={rules}
-                onChange={setRules}
-                highlightedLine={matchResult?.lineNumber}
-                className="h-full"
-              />
-            </div>
+            <ClashRuleEditor
+              value={rules}
+              onChange={setRules}
+              highlightedLine={matchResult?.lineNumber}
+              className="h-full"
+              ruleCount={ruleEngine.getRuleCount()}
+              hasError={validationResults.length > 0}
+              errorCount={validationResults.length}
+            />
           </div>
         </div>
 
