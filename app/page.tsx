@@ -604,7 +604,7 @@ export default function ClashRuleTester() {
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-muted-foreground">
-                          {new Date(policy.id).toLocaleTimeString()}
+                          {new Date(Number(policy.id)).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'})}
                         </span>
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
@@ -1047,7 +1047,7 @@ export default function ClashRuleTester() {
                         >
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-muted-foreground">
-                              {new Date(entry.timestamp).toLocaleTimeString()}
+                              {new Date(entry.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'})}
                             </span>
                             <div className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
