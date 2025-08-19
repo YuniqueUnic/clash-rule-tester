@@ -334,6 +334,7 @@ export function SettingsDialog({ onSettingsChange }: SettingsDialogProps) {
           </DialogTitle>
         </DialogHeader>
 
+        {/* TODO: 结构化这部分组件，将 Tabs 和 TabsContent 拆分为单独的组件到新文件 (夹) 中。*/}
         <Tabs defaultValue="basic" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="basic">基础配置</TabsTrigger>
@@ -380,7 +381,7 @@ export function SettingsDialog({ onSettingsChange }: SettingsDialogProps) {
                       placeholder={getEndpointPlaceholder()}
                       className="hover:bg-accent/50 transition-colors rounded-md"
                     />
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground opacity-40">
                       输入兼容 OpenAI API 的服务端点，如 Claude
                       API、本地部署的模型等
                     </p>
@@ -495,7 +496,7 @@ export function SettingsDialog({ onSettingsChange }: SettingsDialogProps) {
                                 <Plus className="h-4 w-4" />
                               </Button>
                             </div>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground opacity-40">
                               输入完整的模型名称，确保与 API
                               提供商支持的模型名称一致。测试成功后会自动保存到模型列表。
                             </p>

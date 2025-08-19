@@ -26,6 +26,9 @@
   --ring: oklch(0.292 0.038 265.04);
   --radius: 0.5rem; /* Standard shadcn/ui radius */
 
+  /* 自定义更浅的 placeholder 颜色 */
+  --placeholder-foreground: oklch(0.88 0.015 260); /* 更浅的灰色 */
+
   /* A more vibrant and accessible chart palette */
   --chart-1: oklch(0.62 0.16 260); /* Blue */
   --chart-2: oklch(0.7 0.18 145); /* Green */
@@ -66,6 +69,9 @@
   --input: oklch(0.354 0.034 263.73);
   --ring: oklch(0.923 0.011 257.34);
 
+  /* 自定义更浅的 placeholder 颜色 */
+  --placeholder-foreground: oklch(0.68 0.015 260); /* 暗色模式下更浅的灰色 */
+
   /* A more vibrant and accessible chart palette for dark mode */
   --chart-1: oklch(0.62 0.16 260); /* Blue */
   --chart-2: oklch(0.7 0.18 145); /* Green */
@@ -97,6 +103,7 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-placeholder-foreground: var(--placeholder-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
@@ -129,5 +136,11 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* 自定义 placeholder 样式 */
+  input::placeholder,
+  textarea::placeholder {
+    color: oklch(var(--placeholder-foreground));
   }
 }
