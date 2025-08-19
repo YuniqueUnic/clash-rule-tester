@@ -1,3 +1,4 @@
+/// TODO: need to add src-port dst-port src-ip dst-ip
 export interface TestRequest {
   domain?: string;
   ip?: string;
@@ -470,6 +471,7 @@ export class ClashRuleEngine {
     return mockASNData[ip] === asn;
   }
 
+  // TODO: Need to expose to user to edit.
   private matchGeoSite(domain: string | undefined, category: string): boolean {
     if (!domain) return false;
 
@@ -491,6 +493,7 @@ export class ClashRuleEngine {
     return sites.some((site) => domain.endsWith(site) || domain === site);
   }
 
+  /// TODO: need expose the rule provider to user to edit
   private matchRuleSet(request: TestRequest, ruleSetName: string): boolean {
     // Mock rule set matching - in production would load external rule sets
     const mockRuleSets: Record<string, (req: TestRequest) => boolean> = {
@@ -576,6 +579,7 @@ export class ClashRuleEngine {
     }
   }
 
+  // TODO: Shoul expose to use to edit
   private matchGeoIP(ip: string | undefined, country: string): boolean {
     if (!ip) return false;
 

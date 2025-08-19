@@ -102,7 +102,7 @@ interface TestHistory {
 interface TestMetrics {
   totalTests: number;
   averageTime: number;
-  successRate: number;
+  successRate: number; // 以百分比形式存储，0 表示 0%
   lastTestTime: number;
 }
 
@@ -135,7 +135,7 @@ export default function ClashRuleTester() {
   const [testMetrics, setTestMetrics] = useState<TestMetrics>({
     totalTests: 0,
     averageTime: 0,
-    successRate: 0,
+    successRate: 0, // 以百分比形式存储，0 表示 0%
     lastTestTime: 0,
   });
   const [isTestingInProgress, setIsTestingInProgress] = useState(false);
@@ -235,9 +235,10 @@ export default function ClashRuleTester() {
       const newTotal = prev.totalTests + 1;
       const newAverageTime = (prev.averageTime * prev.totalTests + duration) /
         newTotal;
-      const newSuccessRate = result
-        ? ((prev.successRate * prev.totalTests + 1) / newTotal) * 100
-        : ((prev.successRate * prev.totalTests) / newTotal) * 100;
+      // 计算成功次数：之前的成功次数 + 当前是否成功 (1 或 0)
+      const newSuccessCount =
+        Math.round(prev.successRate * prev.totalTests / 100) + (result ? 1 : 0);
+      const newSuccessRate = (newSuccessCount / newTotal) * 100;
 
       return {
         totalTests: newTotal,
@@ -411,7 +412,7 @@ export default function ClashRuleTester() {
     setTestMetrics({
       totalTests: 0,
       averageTime: 0,
-      successRate: 0,
+      successRate: 0, // 以百分比形式存储，0 表示 0%
       lastTestTime: 0,
     });
     toast({
@@ -604,7 +605,11 @@ export default function ClashRuleTester() {
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-muted-foreground">
-                          {new Date(Number(policy.id)).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'})}
+                          {new Date(Number(policy.id)).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
                         </span>
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
@@ -1047,7 +1052,14 @@ export default function ClashRuleTester() {
                         >
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-muted-foreground">
-                              {new Date(entry.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'})}
+                              {new Date(entry.timestamp).toLocaleTimeString(
+                                [],
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  second: "2-digit",
+                                },
+                              )}
                             </span>
                             <div className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
@@ -1093,7 +1105,9 @@ export default function ClashRuleTester() {
         </div>
       </div>
 
-      <footer className="border-t bg-card/30 px-6 py-3">
+      {/* TODO: replace this with my own footer */}
+      {
+        /* <footer className="border-t bg-card/30 px-6 py-3">
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <div className="flex items-center gap-4">
             <span>CLASH 规则测试器 v1.0</span>
@@ -1108,7 +1122,8 @@ export default function ClashRuleTester() {
             <span>测试</span>
           </div>
         </div>
-      </footer>
+      </footer> */
+      }
     </div>
   );
 }
