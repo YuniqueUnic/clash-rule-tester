@@ -35,6 +35,16 @@ export class ClashRuleEngine {
     this.parseRules(rulesText);
   }
 
+  // 添加公共的 updateRules 方法
+  public updateRules(rulesText: string): void {
+    this.parseRules(rulesText);
+  }
+
+  // 添加获取规则数量的方法
+  public getRuleCount(): number {
+    return this.rules.length;
+  }
+
   private parseRules(rulesText: string) {
     const lines = rulesText.split("\n");
     this.rules = [];
