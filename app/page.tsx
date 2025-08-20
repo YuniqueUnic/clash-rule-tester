@@ -111,8 +111,6 @@ interface TestMetrics {
 export default function ClashRuleTester() {
   const [rules, setRules] = useState(SAMPLE_RULES);
   const [testDomain, setTestDomain] = useState("www.google.com");
-  const [testIP, setTestIP] = useState("8.8.8.8");
-  const [testPort, setTestPort] = useState("443");
   const [testProcess, setTestProcess] = useState("chrome.exe");
   const [testProcessPath, setTestProcessPath] = useState("/usr/bin/chrome");
 
@@ -224,10 +222,17 @@ export default function ClashRuleTester() {
     };
   }, [
     testDomain,
-    testIP,
-    testPort,
     testProcess,
     testProcessPath,
+    testSrcIPv4,
+    testSrcIPv6,
+    testSrcPort,
+    testDstIPv4,
+    testDstIPv6,
+    testDstPort,
+    testGeoIP,
+    testNetwork,
+    testUID,
     autoTest,
     autoTestDelayMs,
   ]);
@@ -316,10 +321,17 @@ export default function ClashRuleTester() {
     }
   }, [
     testDomain,
-    testIP,
-    testPort,
     testProcess,
     testProcessPath,
+    testSrcIPv4,
+    testSrcIPv6,
+    testSrcPort,
+    testDstIPv4,
+    testDstIPv6,
+    testDstPort,
+    testGeoIP,
+    testNetwork,
+    testUID,
     ruleEngine,
     toast,
   ]);
@@ -981,7 +993,10 @@ export default function ClashRuleTester() {
               </div>
               <div className="p-4 space-y-4">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="test-domain" className="text-foreground text-sm min-w-[60px]">
+                  <Label
+                    htmlFor="test-domain"
+                    className="text-foreground text-sm min-w-[60px]"
+                  >
                     域名:
                   </Label>
                   <Input
@@ -989,61 +1004,6 @@ export default function ClashRuleTester() {
                     value={testDomain}
                     onChange={(e) => setTestDomain(e.target.value)}
                     placeholder="www.example.com"
-                    className="hover:bg-accent/60 transition-colors rounded-md flex-1"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="test-ip" className="text-foreground text-sm min-w-[60px]">
-                    IP 地址:
-                  </Label>
-                  <Input
-                    id="test-ip"
-                    value={testIP}
-                    onChange={(e) => setTestIP(e.target.value)}
-                    placeholder="8.8.8.8"
-                    className="hover:bg-accent/60 transition-colors rounded-md flex-1"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="test-port" className="text-foreground text-sm min-w-[60px]">
-                    端口:
-                  </Label>
-                  <Input
-                    id="test-port"
-                    value={testPort}
-                    onChange={(e) => setTestPort(e.target.value)}
-                    placeholder="443"
-                    className="hover:bg-accent/60 transition-colors rounded-md flex-1"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="test-process" className="text-foreground text-sm min-w-[60px]">
-                    进程:
-                  </Label>
-                  <Input
-                    id="test-process"
-                    value={testProcess}
-                    onChange={(e) => setTestProcess(e.target.value)}
-                    placeholder="chrome.exe"
-                    className="hover:bg-accent/60 transition-colors rounded-md flex-1"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Label
-                    htmlFor="test-process-path"
-                    className="text-foreground text-sm min-w-[80px]"
-                  >
-                    进程路径:
-                  </Label>
-                  <Input
-                    id="test-process-path"
-                    value={testProcessPath}
-                    onChange={(e) => setTestProcessPath(e.target.value)}
-                    placeholder="/usr/bin/chrome"
                     className="hover:bg-accent/60 transition-colors rounded-md flex-1"
                   />
                 </div>
@@ -1088,7 +1048,10 @@ export default function ClashRuleTester() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="test-src-port" className="text-foreground text-sm min-w-[80px]">
+                  <Label
+                    htmlFor="test-src-port"
+                    className="text-foreground text-sm min-w-[80px]"
+                  >
                     源端口:
                   </Label>
                   <Input
@@ -1142,7 +1105,10 @@ export default function ClashRuleTester() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="test-dst-port" className="text-foreground text-sm min-w-[80px]">
+                  <Label
+                    htmlFor="test-dst-port"
+                    className="text-foreground text-sm min-w-[80px]"
+                  >
                     目标端口:
                   </Label>
                   <Input
@@ -1150,6 +1116,38 @@ export default function ClashRuleTester() {
                     value={testDstPort}
                     onChange={(e) => setTestDstPort(e.target.value)}
                     placeholder="443"
+                    className="hover:bg-accent/60 transition-colors rounded-md flex-1"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor="test-process"
+                    className="text-foreground text-sm min-w-[60px]"
+                  >
+                    进程:
+                  </Label>
+                  <Input
+                    id="test-process"
+                    value={testProcess}
+                    onChange={(e) => setTestProcess(e.target.value)}
+                    placeholder="chrome.exe"
+                    className="hover:bg-accent/60 transition-colors rounded-md flex-1"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor="test-process-path"
+                    className="text-foreground text-sm min-w-[80px]"
+                  >
+                    进程路径:
+                  </Label>
+                  <Input
+                    id="test-process-path"
+                    value={testProcessPath}
+                    onChange={(e) => setTestProcessPath(e.target.value)}
+                    placeholder="/usr/bin/chrome"
                     className="hover:bg-accent/60 transition-colors rounded-md flex-1"
                   />
                 </div>
@@ -1275,7 +1273,10 @@ export default function ClashRuleTester() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="test-uid" className="text-foreground text-sm min-w-[80px]">
+                  <Label
+                    htmlFor="test-uid"
+                    className="text-foreground text-sm min-w-[80px]"
+                  >
                     用户 ID:
                   </Label>
                   <Input
@@ -1399,9 +1400,10 @@ export default function ClashRuleTester() {
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="font-mono">
-                             {entry.request.domain || entry.request.dstIPv4 || entry.request.srcIPv4 ||
-                               "N/A"}
-                           </span>
+                              {entry.request.domain || entry.request.dstIPv4 ||
+                                entry.request.srcIPv4 ||
+                                "N/A"}
+                            </span>
                             {entry.result && (
                               <Badge
                                 variant={entry.result.policy === "DIRECT"
