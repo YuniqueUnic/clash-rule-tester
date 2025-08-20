@@ -191,8 +191,15 @@ const createClashTheme = (isDark: boolean, lineCount: number = 1) => {
       backgroundColor: isDark ? "#334155" : "#e2e8f0",
     },
     ".cm-selectionBackground, ::selection": {
-      backgroundColor: isDark ? "#1e40af" : "#3b82f6",
-      color: "white",
+      backgroundColor: isDark ? "#334155" : "#e2e8f0",
+      color: "#1f2937 !important",
+    },
+    ".cm-focused .cm-selectionBackground": {
+      backgroundColor: isDark ? "#3b82f6" : "#2563eb",
+    },
+    ".cm-line ::selection": {
+      backgroundColor: isDark ? "#3b82f6" : "#2563eb",
+      color: "#1f2937 !important",
     },
     ".cm-cursor": {
       borderLeftColor: isDark ? "#3b82f6" : "#2563eb",
@@ -331,23 +338,21 @@ const createClashLinter = (
         });
       }
 
-      // 验证策略名称
+      // 验证策略名称 - 只验证真实存在的策略
       if (policy) {
         const allValidPolicies = [
           ...realPolicies.map((p) => p.name),
           ...policies,
         ];
-        const isValidPolicy = allValidPolicies.includes(policy) ||
-          policy.match(/^[A-Z][A-Z0-9_-]*$/);
 
-        if (!isValidPolicy) {
+        if (!allValidPolicies.includes(policy)) {
           diagnostics.push({
             from: view.state.doc.line(index + 1).from +
               line.lastIndexOf(policy),
             to: view.state.doc.line(index + 1).from + line.lastIndexOf(policy) +
               policy.length,
             severity: "error",
-            message: `无效的策略名称：${policy}`,
+            message: `策略 "${policy}" 不存在，请在策略管理中添加该策略`,
             source: "clash-rule-linter",
           });
         }

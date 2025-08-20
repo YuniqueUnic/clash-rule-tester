@@ -368,6 +368,67 @@ export default function ClashRuleTester() {
     }
   };
 
+  // 导入策略
+  const importPolicies = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const importedPolicies = JSON.parse(e.target?.result as string);
+            if (Array.isArray(importedPolicies)) {
+              // 验证导入的策略格式
+              const validPolicies = importedPolicies.filter((p) =>
+                p && typeof p.name === "string" && p.name.trim()
+              ).map((p) => ({
+                ...p,
+                id: Date.now().toString() +
+                  Math.random().toString(36).substr(2, 9),
+              }));
+              setPolicies([...policies, ...validPolicies]);
+              toast({
+                title: "导入成功",
+                description: `成功导入 ${validPolicies.length} 个策略`,
+              });
+            } else {
+              throw new Error("Invalid format");
+            }
+          } catch (error) {
+            toast({
+              title: "导入失败",
+              description: "文件格式不正确，请选择有效的策略文件",
+              variant: "destructive",
+            });
+          }
+        };
+        reader.readAsText(file);
+      }
+    };
+    input.click();
+  };
+
+  // 导出策略
+  const exportPolicies = () => {
+    const dataStr = JSON.stringify(policies, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `clash-policies-${
+      new Date().toISOString().split("T")[0]
+    }.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast({
+      title: "导出成功",
+      description: `已导出 ${policies.length} 个策略`,
+    });
+  };
+
   const deletePolicy = (id: string) => {
     setPolicies(policies.filter((p) => p.id !== id));
     toast({
@@ -737,14 +798,27 @@ export default function ClashRuleTester() {
                   ))}
                 </div>
 
-                <Button
-                  variant="outline"
-                  className="w-full bg-transparent rounded-md"
-                  size="sm"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  导入策略
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 bg-transparent rounded-md"
+                    size="sm"
+                    onClick={importPolicies}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    导入策略
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 bg-transparent rounded-md"
+                    size="sm"
+                    onClick={exportPolicies}
+                    disabled={policies.length === 0}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    导出策略
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -1124,9 +1198,20 @@ export default function ClashRuleTester() {
                 {/* Destination IP Configuration */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 justify-between">
-                    <Label className="text-foreground min-w-fit">
-                      目标 IP:
-                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="enable-dst-ip"
+                        checked={enabledTestItems.dstIP}
+                        onCheckedChange={(checked) =>
+                          setEnabledTestItems((prev) => ({
+                            ...prev,
+                            dstIP: !!checked,
+                          }))}
+                      />
+                      <Label className="text-foreground min-w-fit">
+                        目标 IP:
+                      </Label>
+                    </div>
                     <Select
                       value={dstIPType}
                       onValueChange={(value: "ipv4" | "ipv6" | "both") =>
@@ -1149,6 +1234,7 @@ export default function ClashRuleTester() {
                         onChange={(e) => setTestDstIPv4(e.target.value)}
                         placeholder="8.8.8.8"
                         className="hover:bg-accent/60 transition-colors rounded-md"
+                        disabled={!enabledTestItems.dstIP}
                       />
                     )}
                     {(dstIPType === "ipv6" || dstIPType === "both") && (
@@ -1157,12 +1243,22 @@ export default function ClashRuleTester() {
                         onChange={(e) => setTestDstIPv6(e.target.value)}
                         placeholder="2001:4860:4860::8888"
                         className="hover:bg-accent/60 transition-colors rounded-md"
+                        disabled={!enabledTestItems.dstIP}
                       />
                     )}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="enable-dst-port"
+                    checked={enabledTestItems.dstPort}
+                    onCheckedChange={(checked) =>
+                      setEnabledTestItems((prev) => ({
+                        ...prev,
+                        dstPort: !!checked,
+                      }))}
+                  />
                   <Label
                     htmlFor="test-dst-port"
                     className="text-foreground text-sm min-w-[80px]"
@@ -1175,10 +1271,20 @@ export default function ClashRuleTester() {
                     onChange={(e) => setTestDstPort(e.target.value)}
                     placeholder="443"
                     className="hover:bg-accent/60 transition-colors rounded-md flex-1"
+                    disabled={!enabledTestItems.dstPort}
                   />
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="enable-process"
+                    checked={enabledTestItems.process}
+                    onCheckedChange={(checked) =>
+                      setEnabledTestItems((prev) => ({
+                        ...prev,
+                        process: !!checked,
+                      }))}
+                  />
                   <Label
                     htmlFor="test-process"
                     className="text-foreground text-sm min-w-[60px]"
@@ -1191,6 +1297,7 @@ export default function ClashRuleTester() {
                     onChange={(e) => setTestProcess(e.target.value)}
                     placeholder="chrome.exe"
                     className="hover:bg-accent/60 transition-colors rounded-md flex-1"
+                    disabled={!enabledTestItems.process}
                   />
                 </div>
 
