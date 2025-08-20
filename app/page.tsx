@@ -774,8 +774,8 @@ export default function ClashRuleTester() {
         </div>
 
         {/* Middle Column: Rule Editor */}
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 bg-card">
+        <div className="flex-1 flex flex-col max-h-[calc(100vh-200px)]">
+          <div className="flex-1 bg-card  justify-around">
             <ClashRuleEditor
               value={rules}
               onChange={setRules}
@@ -784,6 +784,9 @@ export default function ClashRuleTester() {
               ruleCount={ruleEngine.getRuleCount()}
               hasError={validationResults.length > 0}
               errorCount={validationResults.length}
+              policies={policies.map((p) => p.name)}
+              geoIPCountries={geoIPCountries}
+              networkTypes={networkTypes}
             />
           </div>
 
