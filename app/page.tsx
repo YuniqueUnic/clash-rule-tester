@@ -17,6 +17,7 @@ import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertTriangle,
+  Check,
   CheckCircle,
   ChevronDown,
   ChevronUp,
@@ -36,6 +37,7 @@ import {
   Timer,
   Trash2,
   Upload,
+  X,
   Zap,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -352,10 +354,22 @@ export default function ClashRuleTester() {
   };
 
   const addPolicy = () => {
-    if (newPolicyName.trim()) {
+    const trimmedName = newPolicyName.trim();
+    if (trimmedName) {
+      // 检查是否已存在相同名称的策略（大小写敏感）
+      const existingPolicy = policies.find((p) => p.name === trimmedName);
+      if (existingPolicy) {
+        toast({
+          title: "策略已存在",
+          description: `策略名称 "${trimmedName}" 已存在，请使用不同的名称。`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       const newPolicy: Policy = {
         id: Date.now().toString(),
-        name: newPolicyName.trim(),
+        name: trimmedName,
         comment: newPolicyComment.trim() || undefined,
       };
       setPolicies([...policies, newPolicy]);
@@ -438,18 +452,33 @@ export default function ClashRuleTester() {
   };
 
   const updatePolicy = (id: string, name: string, comment?: string) => {
+    const trimmedName = name.trim();
+    const trimmedComment = comment?.trim();
+
+    // 检查是否与其他策略重名（排除当前编辑的策略）
+    const existingPolicy = policies.find((p) =>
+      p.id !== id && p.name === trimmedName
+    );
+    if (existingPolicy) {
+      toast({
+        title: "策略已存在",
+        description: `策略名称 "${trimmedName}" 已存在，请使用不同的名称。`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setPolicies(
-      policies.map((
-        p,
-      ) => (p.id === id
-        ? { ...p, name: name.trim(), comment: comment?.trim() || undefined }
-        : p)
+      policies.map((p) =>
+        p.id === id
+          ? { ...p, name: trimmedName, comment: trimmedComment || undefined }
+          : p
       ),
     );
     setEditingPolicy(null);
     toast({
       title: "策略已更新",
-      description: "策略信息已更新。",
+      description: `策略 "${trimmedName}" 已更新。`,
     });
   };
 
@@ -773,27 +802,97 @@ export default function ClashRuleTester() {
                       key={policy.id}
                       className="p-2 bg-muted/30 rounded-md hover:bg-muted/50 transition-colors text-xs"
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-muted-foreground">
-                          {new Date(Number(policy.id)).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            second: "2-digit",
-                          })}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          <span>{policy.id}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono">{policy.name}</span>
-                        {policy.comment && (
-                          <Badge variant="outline" className="text-xs h-4">
-                            {policy.comment}
-                          </Badge>
+                      {editingPolicy === policy.id
+                        ? (
+                          <div className="space-y-2">
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="策略名称"
+                                value={newPolicyName}
+                                onChange={(e) =>
+                                  setNewPolicyName(e.target.value)}
+                                className="flex-1 text-xs"
+                              />
+                              <Button
+                                onClick={() =>
+                                  updatePolicy(
+                                    policy.id,
+                                    newPolicyName,
+                                    newPolicyComment,
+                                  )}
+                                size="sm"
+                                disabled={!newPolicyName.trim()}
+                                className="h-6 px-2"
+                              >
+                                <Check className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                onClick={() => setEditingPolicy(null)}
+                                size="sm"
+                                variant="outline"
+                                className="h-6 px-2"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            <Input
+                              placeholder="策略注释（可选）"
+                              value={newPolicyComment}
+                              onChange={(e) =>
+                                setNewPolicyComment(e.target.value)}
+                              className="text-xs"
+                            />
+                          </div>
+                        )
+                        : (
+                          <>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-muted-foreground">
+                                {new Date(Number(policy.id)).toLocaleTimeString(
+                                  [],
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    second: "2-digit",
+                                  },
+                                )}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  onClick={() => {
+                                    setEditingPolicy(policy.id);
+                                    setNewPolicyName(policy.name);
+                                    setNewPolicyComment(policy.comment || "");
+                                  }}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-5 w-5 p-0 hover:bg-accent"
+                                >
+                                  <Settings className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  onClick={() => deletePolicy(policy.id)}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-5 w-5 p-0 hover:bg-destructive/20"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono">{policy.name}</span>
+                              {policy.comment && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs h-4"
+                                >
+                                  {policy.comment}
+                                </Badge>
+                              )}
+                            </div>
+                          </>
                         )}
-                      </div>
                     </div>
                   ))}
                 </div>
@@ -904,12 +1003,10 @@ export default function ClashRuleTester() {
                         >
                           {matchResult.policy}
                         </Badge>
-                        {matchResultExpanded && (
-                          <span>
-                            <span className="text-muted-foreground text-sm">
-                              代码 line {matchResult.lineNumber}{" "}
-                              / 匹配规则：{matchResult.rule}
-                            </span>
+                        {!matchResultExpanded && (
+                          <span className="text-muted-foreground text-sm">
+                            代码 line {matchResult.lineNumber}{" "}
+                            / 匹配规则：{matchResult.rule}
                           </span>
                         )}
                       </>
@@ -1072,21 +1169,34 @@ export default function ClashRuleTester() {
                     </Badge>
                   </div>
                 </div>
-                {autoTest && (
-                  <div className="mt-3 space-y-2">
-                    <Label className="text-xs">
-                      自动测试延迟：{autoTestDelayMs}ms
-                    </Label>
-                    <Slider
-                      value={[autoTestDelayMs]}
-                      onValueChange={([value]) => setAutoTestDelayMs(value)}
-                      min={100}
-                      max={2000}
-                      step={100}
-                      className="w-full"
-                    />
-                  </div>
-                )}
+                {!autoTest
+                  ? (
+                    <Button
+                      onClick={testRules}
+                      className="mt-3 space-y-2 w-full hover:scale-[1.02] hover:shadow-sm transition-all duration-200 rounded-md"
+                      disabled={isTestingInProgress}
+                    >
+                      {isTestingInProgress
+                        ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        : <Play className="h-4 w-4 mr-2" />}
+                      测试规则
+                    </Button>
+                  )
+                  : (
+                    <div className="mt-3 space-y-2">
+                      <Label className="text-xs">
+                        自动测试延迟：{autoTestDelayMs}ms
+                      </Label>
+                      <Slider
+                        value={[autoTestDelayMs]}
+                        onValueChange={([value]) => setAutoTestDelayMs(value)}
+                        min={100}
+                        max={2000}
+                        step={100}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
               </div>
               <div className="p-4 space-y-4">
                 <div className="flex items-center gap-2">
@@ -1103,7 +1213,7 @@ export default function ClashRuleTester() {
                     htmlFor="test-domain"
                     className="text-foreground text-sm min-w-[60px]"
                   >
-                    域名:
+                    域名：
                   </Label>
                   <Input
                     id="test-domain"
@@ -1183,7 +1293,7 @@ export default function ClashRuleTester() {
                     htmlFor="test-src-port"
                     className="text-foreground text-sm min-w-[80px]"
                   >
-                    源端口:
+                    源端口：
                   </Label>
                   <Input
                     id="test-src-port"
@@ -1263,7 +1373,7 @@ export default function ClashRuleTester() {
                     htmlFor="test-dst-port"
                     className="text-foreground text-sm min-w-[80px]"
                   >
-                    目标端口:
+                    目标端口：
                   </Label>
                   <Input
                     id="test-dst-port"
@@ -1289,7 +1399,7 @@ export default function ClashRuleTester() {
                     htmlFor="test-process"
                     className="text-foreground text-sm min-w-[60px]"
                   >
-                    进程:
+                    进程：
                   </Label>
                   <Input
                     id="test-process"
@@ -1306,7 +1416,7 @@ export default function ClashRuleTester() {
                     htmlFor="test-process-path"
                     className="text-foreground text-sm min-w-[80px]"
                   >
-                    进程路径:
+                    进程路径：
                   </Label>
                   <Input
                     id="test-process-path"
@@ -1452,19 +1562,6 @@ export default function ClashRuleTester() {
                     className="hover:bg-accent/60 transition-colors rounded-md flex-1"
                   />
                 </div>
-
-                {!autoTest && (
-                  <Button
-                    onClick={testRules}
-                    className="w-full hover:scale-[1.02] hover:shadow-sm transition-all duration-200 rounded-md"
-                    disabled={isTestingInProgress}
-                  >
-                    {isTestingInProgress
-                      ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      : <Play className="h-4 w-4 mr-2" />}
-                    测试规则
-                  </Button>
-                )}
               </div>
             </div>
 

@@ -132,11 +132,11 @@ const createClashLanguage = (
   return new LanguageSupport(clashLanguage);
 };
 
-// 计算行号列宽度的函数
+// 计算行号列宽度的函数 - 优化宽度计算，更紧凑美观
 const calculateLineNumberWidth = (lineCount: number) => {
   const digits = Math.max(2, lineCount.toString().length);
-  // 每个数字大约 8px，加上左右 padding
-  return Math.max(32, digits * 8 + 16);
+  // 优化：每个数字 6px，左右 padding 8px，最大宽度不超过 48px
+  return Math.min(48, Math.max(28, digits * 6 + 8));
 };
 
 // 创建动态主题样式
@@ -172,17 +172,20 @@ const createClashTheme = (isDark: boolean, lineCount: number = 1) => {
     },
     ".cm-gutter": {
       minWidth: `${lineNumberWidth}px`,
+      maxWidth: `${lineNumberWidth}px`,
     },
     ".cm-lineNumbers": {
       minWidth: `${lineNumberWidth}px`,
+      maxWidth: `${lineNumberWidth}px`,
     },
     ".cm-lineNumbers .cm-gutterElement": {
       color: isDark ? "#64748b" : "#64748b",
-      fontSize: "12px",
+      fontSize: "11px",
       fontFamily: "var(--font-mono)",
-      padding: "0 6px",
+      padding: "0 4px",
       textAlign: "right",
-      minWidth: `${lineNumberWidth - 12}px`,
+      minWidth: `${lineNumberWidth - 8}px`,
+      fontWeight: "500",
     },
     ".cm-activeLine": {
       backgroundColor: isDark ? "#1e293b" : "#f1f5f9",
