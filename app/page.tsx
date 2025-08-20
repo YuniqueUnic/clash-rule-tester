@@ -4,11 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  AlertTriangle,
   Download,
   HelpCircle,
+  Loader2,
   Monitor,
   Moon,
   Settings,
+  Sparkles,
   Sun,
   Upload,
 } from "lucide-react";
@@ -21,13 +24,14 @@ import {
 import { SettingsDialog } from "@/components/settings-dialog";
 import { HelpDialog } from "@/components/help-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useTheme } from "@/hooks/use-theme";
+import { useTheme } from "next-themes";
 import {
   ClashRuleEngine,
   type MatchResult,
   type TestRequest,
 } from "@/lib/clash-rule-engine";
 import {
+  ClashDataSources,
   DEFAULT_ENABLED_TEST_ITEMS,
   DEFAULT_TEST_METRICS,
   type EnabledTestItems,
@@ -40,6 +44,7 @@ import {
   SAMPLE_RULES,
   type TestMetrics as TestMetricsType,
 } from "@/lib/clash-data-sources";
+import { AIService } from "@/lib/ai-service";
 
 // 导入新的组件
 import { QuickRuleCreator } from "@/components/left-column/quick-rule-creator";
@@ -73,16 +78,19 @@ interface AISettings {
 
 export default function ClashRuleTester() {
   // 主题管理
-  const { theme, setTheme, isDark } = useTheme();
+  const { setTheme } = useTheme();
   const { toast } = useToast();
 
   // 核心状态
   const [rules, setRules] = useState(SAMPLE_RULES);
-  const [ruleEngine] = useState(() => new ClashRuleEngine(SAMPLE_RULES));
+  const ruleEngine = useState(() => new ClashRuleEngine(rules))[0];
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
-  const [matchResultExpanded, setMatchResultExpanded] = useState(false);
+  const [matchResultExpanded, setMatchResultExpanded] = useState(true);
   const [highlightedLine, setHighlightedLine] = useState<number | undefined>();
   const [isTestingInProgress, setIsTestingInProgress] = useState(false);
+
+  // 验证结果
+  const validationResults = ruleEngine.validateRules();
 
   // 策略管理
   const [policies, setPolicies] = useState<Policy[]>(() =>
@@ -151,16 +159,15 @@ export default function ClashRuleTester() {
     apiKey: "",
     model: "",
   });
-
-  // 对话框状态
-  const [showSettings, setShowSettings] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
+  const [isOptimizing, setIsOptimizing] = useState(false);
 
   // 统计信息
   const ruleCount = ruleEngine.getRuleCount();
+  const hasError = validationResults.length > 0;
+  const errorCount = validationResults.length;
 
-  const hasError = false; // 这里可以添加错误检测逻辑
-  const errorCount = 0;
+  // AI 服务
+  const aiService = new AIService(aiSettings);
 
   // 更新规则引擎
   useEffect(() => {
@@ -305,96 +312,147 @@ export default function ClashRuleTester() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [testRules]);
 
+  // 添加快速规则函数
+  const addQuickRule = (ruleType: string, content: string, policy: string) => {
+    const newRule = `${ruleType},${content},${policy}`;
+    setRules((prev) => prev + "\n" + newRule);
+    toast({
+      title: "规则已添加",
+      description: "新规则已添加到配置中。",
+    });
+  };
+
+  // AI 优化规则函数
+  const optimizeRules = async () => {
+    if (!aiService.isConfigured()) {
+      toast({
+        title: "AI 未配置",
+        description: "请先配置 AI 设置。",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsOptimizing(true);
+    try {
+      const optimizedRules = await aiService.optimizeRules(rules);
+      setRules(optimizedRules);
+      toast({
+        title: "规则已优化",
+        description: "规则已通过 AI 优化。",
+      });
+    } catch (error) {
+      toast({
+        title: "优化失败",
+        description: error instanceof Error ? error.message : "规则优化失败",
+        variant: "destructive",
+      });
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
+  // AI 解释规则函数
+  const explainRule = async () => {
+    if (!matchResult || !aiService.isConfigured()) {
+      toast({
+        title: "无法解释规则",
+        description: !matchResult ? "尚未匹配到规则。" : "请先配置 AI 设置。",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsExplaining(true);
+    try {
+      const explanation = await aiService.explainRule(
+        matchResult.rule,
+        matchResult.explanation,
+      );
+      setRuleExplanation(explanation);
+    } catch (error) {
+      toast({
+        title: "解释失败",
+        description: error instanceof Error ? error.message : "规则解释失败",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExplaining(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      {/* 顶部导航栏 */}
-      <header className="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h1 className="text-xl font-bold text-foreground">
-                Clash Rule Tester
+      <header className="border-b bg-card/30 backdrop-blur-sm sticky top-0 z-50">
+        <div className="flex items-center justify-between px-4 py-2">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-xs">
+                C
+              </span>
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-foreground leading-tight">
+                CLASH 规则测试器
               </h1>
-              <Badge variant="outline" className="text-xs">
-                规则数：{ruleCount}
-              </Badge>
-              {hasError && (
-                <Badge variant="destructive" className="text-xs">
-                  错误：{errorCount}
-                </Badge>
-              )}
+              <p className="text-xs text-muted-foreground leading-tight">
+                专业的规则引擎测试工具
+              </p>
             </div>
+          </div>
 
-            <div className="flex items-center gap-2">
-              {/* 主题切换 */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    {isDark
-                      ? <Moon className="h-4 w-4" />
-                      : <Sun className="h-4 w-4" />}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setTheme("light")}>
-                    <Sun className="mr-2 h-4 w-4" />
-                    Light
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setTheme("dark")}>
-                    <Moon className="mr-2 h-4 w-4" />
-                    Dark
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setTheme("system")}>
-                    <Monitor className="mr-2 h-4 w-4" />
-                    System
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+          <div className="flex items-center gap-1">
+            <HelpDialog />
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowSettings(true)}
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="hover:bg-accent/80 transition-colors bg-transparent h-8 w-8 p-0"
+                >
+                  <Sun className="h-3 w-3 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                  <Moon className="absolute h-3 w-3 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                  <span className="sr-only">切换主题</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setTheme("light")}>
+                  <Sun className="mr-2 h-4 w-4" />
+                  浅色
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme("dark")}>
+                  <Moon className="mr-2 h-4 w-4" />
+                  深色
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme("system")}>
+                  <Monitor className="mr-2 h-4 w-4" />
+                  跟随系统
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowHelp(true)}
-              >
-                <HelpCircle className="h-4 w-4" />
-              </Button>
-            </div>
+            <SettingsDialog onSettingsChange={setAISettings} />
           </div>
         </div>
       </header>
 
-      {/* 主要内容区域 */}
-      <main className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-12 gap-6 h-[calc(100vh-140px)]">
-          {/* 左侧栏 - 快速规则创建和策略管理 */}
-          <div className="col-span-3 space-y-6 overflow-y-auto">
+      <div className="flex h-[calc(100vh-56px)]">
+        {/* Left Column: Quick Rule Builder & Policy Management */}
+        <div className="w-80 border-r border-border bg-sidebar/30 overflow-y-auto custom-scrollbar">
+          <div className="p-4 space-y-4">
+            {/* Quick Rule Builder */}
             <QuickRuleCreator
               policies={policies}
-              onAddRule={(ruleType, content, policy) => {
-                const newRule = `${ruleType},${content},${policy}`;
-                setRules((prev) => prev + "\n" + newRule);
-                toast({
-                  title: "规则已添加",
-                  description: "新规则已添加到配置中。",
-                });
-              }}
+              onAddRule={addQuickRule}
             />
 
+            {/* Policy Management */}
             <PolicyManager
               policies={policies}
               onAddPolicy={(name, comment) => {
                 const newPolicy: Policy = {
-                  id: `policy-${Date.now()}-${
-                    Math.random().toString(36).substring(2, 11)
-                  }`,
+                  id: Date.now().toString(),
                   name,
                   comment,
                   createdAt: Date.now(),
@@ -410,59 +468,141 @@ export default function ClashRuleTester() {
                 setPolicies((prev) => prev.filter((p) => p.id !== id));
               }}
               onImportPolicies={() => {
-                // TODO: 实现策略导入
-                toast({
-                  title: "功能开发中",
-                  description: "策略导入功能正在开发中。",
-                });
+                // 导入策略功能
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = ".json";
+                input.onchange = (e) => {
+                  const file = (e.target as HTMLInputElement).files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                      try {
+                        const importedPolicies = JSON.parse(
+                          e.target?.result as string,
+                        );
+                        if (Array.isArray(importedPolicies)) {
+                          const validPolicies = importedPolicies.filter((p) =>
+                            p && typeof p.name === "string" && p.name.trim()
+                          ).map((p) => ({
+                            ...p,
+                            id: Date.now().toString() +
+                              Math.random().toString(36).substr(2, 9),
+                          }));
+                          setPolicies([...policies, ...validPolicies]);
+                          toast({
+                            title: "导入成功",
+                            description:
+                              `成功导入 ${validPolicies.length} 个策略`,
+                          });
+                        } else {
+                          throw new Error("Invalid format");
+                        }
+                      } catch (error) {
+                        toast({
+                          title: "导入失败",
+                          description: "文件格式不正确，请选择有效的策略文件",
+                          variant: "destructive",
+                        });
+                      }
+                    };
+                    reader.readAsText(file);
+                  }
+                };
+                input.click();
               }}
               onExportPolicies={() => {
-                // TODO: 实现策略导出
+                // 导出策略功能
+                const dataStr = JSON.stringify(policies, null, 2);
+                const dataBlob = new Blob([dataStr], {
+                  type: "application/json",
+                });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `clash-policies-${
+                  new Date().toISOString().split("T")[0]
+                }.json`;
+                link.click();
+                URL.revokeObjectURL(url);
                 toast({
-                  title: "功能开发中",
-                  description: "策略导出功能正在开发中。",
+                  title: "导出成功",
+                  description: `已导出 ${policies.length} 个策略`,
                 });
               }}
             />
+
+            {/* AI Optimization */}
+            <Button
+              variant="outline"
+              className="w-full hover:scale-[1.02] hover:shadow-sm transition-all duration-200 bg-transparent hover:bg-accent/80 rounded-md"
+              size="sm"
+              onClick={optimizeRules}
+              disabled={!aiService.isConfigured() || isOptimizing}
+            >
+              {isOptimizing
+                ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                : <Sparkles className="h-4 w-4 mr-2" />}
+              AI 优化规则
+            </Button>
+
+            {/* Validation Results */}
+            {validationResults.length > 0 && (
+              <div className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 rounded-md p-3 border">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <span className="text-amber-800 dark:text-amber-200 text-sm">
+                    发现 {validationResults.length} 个规则验证问题
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
+        </div>
 
-          {/* 中间栏 - 规则编辑器和测试结果 */}
-          <div className="col-span-6 flex flex-col">
-            <div className="flex-1 mb-4">
-              <RuleEditor
-                rules={rules}
-                onRulesChange={setRules}
-                highlightedLine={highlightedLine}
-                ruleCount={ruleCount}
-                hasError={hasError}
-                errorCount={errorCount}
-                policies={policies}
-                geoIPCountries={geoIPCountries}
-                networkTypes={networkTypes}
-              />
-            </div>
-
-            <TestResult
-              matchResult={matchResult}
-              matchResultExpanded={matchResultExpanded}
-              onToggleExpanded={() =>
-                setMatchResultExpanded(!matchResultExpanded)}
-              isTestingInProgress={isTestingInProgress}
-              ruleExplanation={ruleExplanation}
-              isExplaining={isExplaining}
-              onExplainRule={() => {
-                // TODO: 实现 AI 解释功能
-                toast({
-                  title: "功能开发中",
-                  description: "AI 解释功能正在开发中。",
-                });
-              }}
-              aiConfigured={!!aiSettings.apiKey}
+        {/* Middle Column: Rule Editor with VSCode-like layout */}
+        <div className="flex-1 flex flex-col h-full">
+          {/* Editor Area - dynamic height based on bottom panel state */}
+          <div
+            className={`bg-card overflow-hidden transition-all duration-300 ${
+              matchResultExpanded
+                ? "h-[calc(100%-12rem)]"
+                : "h-[calc(100%-3rem)]"
+            }`}
+          >
+            <RuleEditor
+              rules={rules}
+              onRulesChange={setRules}
+              highlightedLine={highlightedLine}
+              ruleCount={ruleCount}
+              hasError={hasError}
+              errorCount={errorCount}
+              policies={policies}
+              geoIPCountries={geoIPCountries}
+              networkTypes={networkTypes}
+              currentGeoIPCountries={geoIPCountries}
+              currentNetworkTypes={networkTypes}
             />
           </div>
 
-          {/* 右侧栏 - 测试器、历史和指标 */}
-          <div className="col-span-3 space-y-6 overflow-y-auto">
+          {/* Bottom Panel - Dynamic height like VSCode bottom panel */}
+          <TestResult
+            matchResult={matchResult}
+            matchResultExpanded={matchResultExpanded}
+            onToggleExpanded={() =>
+              setMatchResultExpanded(!matchResultExpanded)}
+            isTestingInProgress={isTestingInProgress}
+            ruleExplanation={ruleExplanation}
+            isExplaining={isExplaining}
+            onExplainRule={explainRule}
+            aiConfigured={aiService.isConfigured()}
+          />
+        </div>
+
+        {/* Right Column: Enhanced Test Panel and Results */}
+        <div className="w-96 border-l border-border overflow-y-auto custom-scrollbar">
+          <div className="p-4 space-y-4">
+            {/* Enhanced Test Request Panel */}
             <RuleTester
               testDomain={testDomain}
               setTestDomain={setTestDomain}
@@ -503,24 +643,40 @@ export default function ClashRuleTester() {
               geoIPCountries={geoIPCountries}
               networkTypes={networkTypes}
               onAddCountry={() => {
-                const trimmed = newCountryCode.trim().toUpperCase();
-                if (trimmed && !geoIPCountries.includes(trimmed)) {
-                  setGeoIPCountries((prev) => [...prev, trimmed]);
+                const code = newCountryCode.trim().toUpperCase();
+                if (code && !geoIPCountries.includes(code)) {
+                  setGeoIPCountries([...geoIPCountries, code]);
                   setNewCountryCode("");
+                  toast({
+                    title: "国家已添加",
+                    description: `国家代码 ${code} 已添加`,
+                  });
                 }
               }}
               onRemoveCountry={(country) => {
-                setGeoIPCountries((prev) => prev.filter((c) => c !== country));
+                setGeoIPCountries(geoIPCountries.filter((c) => c !== country));
+                toast({
+                  title: "国家已删除",
+                  description: `国家代码 ${country} 已删除`,
+                });
               }}
               onAddNetworkType={() => {
-                const trimmed = newNetworkType.trim().toLowerCase();
-                if (trimmed && !networkTypes.includes(trimmed)) {
-                  setNetworkTypes((prev) => [...prev, trimmed]);
+                const type = newNetworkType.trim().toUpperCase();
+                if (type && !networkTypes.includes(type)) {
+                  setNetworkTypes([...networkTypes, type]);
                   setNewNetworkType("");
+                  toast({
+                    title: "网络类型已添加",
+                    description: `网络类型 ${type} 已添加`,
+                  });
                 }
               }}
               onRemoveNetworkType={(type) => {
-                setNetworkTypes((prev) => prev.filter((t) => t !== type));
+                setNetworkTypes(networkTypes.filter((t) => t !== type));
+                toast({
+                  title: "网络类型已删除",
+                  description: `网络类型 ${type} 已删除`,
+                });
               }}
               newCountryCode={newCountryCode}
               setNewCountryCode={setNewCountryCode}
@@ -531,18 +687,42 @@ export default function ClashRuleTester() {
             <TestMetrics
               testMetrics={testMetrics}
               onExportTestHistory={() => {
-                // TODO: 实现测试历史导出
+                const data = {
+                  exportTime: new Date().toISOString(),
+                  metrics: testMetrics,
+                  history: testHistory,
+                };
+
+                const blob = new Blob([JSON.stringify(data, null, 2)], {
+                  type: "application/json",
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `clash-test-history-${
+                  new Date().toISOString().split("T")[0]
+                }.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
                 toast({
-                  title: "功能开发中",
-                  description: "测试历史导出功能正在开发中。",
+                  title: "导出成功",
+                  description: "测试历史已导出到文件",
                 });
               }}
               onClearTestHistory={() => {
                 setTestHistory([]);
-                setTestMetrics(DEFAULT_TEST_METRICS);
+                setTestMetrics({
+                  totalTests: 0,
+                  averageTime: 0,
+                  successRate: 0,
+                  lastTestTime: 0,
+                });
                 toast({
                   title: "历史已清除",
-                  description: "测试历史和指标已重置。",
+                  description: "所有测试历史和指标已清除",
                 });
               }}
             />
@@ -550,20 +730,7 @@ export default function ClashRuleTester() {
             <TestHistory testHistory={testHistory} />
           </div>
         </div>
-      </main>
-
-      {/* 对话框 */}
-      <SettingsDialog
-        open={showSettings}
-        onOpenChange={setShowSettings}
-        aiSettings={aiSettings}
-        onAISettingsChange={setAISettings}
-      />
-
-      <HelpDialog
-        open={showHelp}
-        onOpenChange={setShowHelp}
-      />
+      </div>
     </div>
   );
 }
