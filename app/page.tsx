@@ -1412,6 +1412,16 @@ export default function ClashRuleTester() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="enable-process-path"
+                    checked={enabledTestItems.processPath}
+                    onCheckedChange={(checked) =>
+                      setEnabledTestItems((prev) => ({
+                        ...prev,
+                        processPath: !!checked,
+                      }))
+                    }
+                  />
                   <Label
                     htmlFor="test-process-path"
                     className="text-foreground text-sm min-w-[80px]"
@@ -1424,19 +1434,30 @@ export default function ClashRuleTester() {
                     onChange={(e) => setTestProcessPath(e.target.value)}
                     placeholder="/usr/bin/chrome"
                     className="hover:bg-accent/60 transition-colors rounded-md flex-1"
+                    disabled={!enabledTestItems.processPath}
                   />
                 </div>
 
                 {/* GeoIP Country */}
                 <div className="space-y-3">
-                  <div className="flex justify-between">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="enable-geoip"
+                      checked={enabledTestItems.geoIP}
+                      onCheckedChange={(checked) =>
+                        setEnabledTestItems((prev) => ({
+                          ...prev,
+                          geoIP: !!checked,
+                        }))
+                      }
+                    />
                     <Label htmlFor="test-geoip" className="text-foreground">
                       GeoIP 国家
                     </Label>
 
                     {/* 国家选择器 */}
-                    <Select value={testGeoIP} onValueChange={setTestGeoIP}>
-                      <SelectTrigger className="hover:bg-accent/60 transition-colors rounded-md">
+                    <Select value={testGeoIP} onValueChange={setTestGeoIP} disabled={!enabledTestItems.geoIP}>
+                      <SelectTrigger className="hover:bg-accent/60 transition-colors rounded-md flex-1">
                         <SelectValue placeholder="选择国家" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1489,14 +1510,24 @@ export default function ClashRuleTester() {
 
                 {/* 网络类型管理 */}
                 <div className="space-y-3">
-                  <div className="flex justify-between">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="enable-network"
+                      checked={enabledTestItems.network}
+                      onCheckedChange={(checked) =>
+                        setEnabledTestItems((prev) => ({
+                          ...prev,
+                          network: !!checked,
+                        }))
+                      }
+                    />
                     <Label htmlFor="test-network" className="text-foreground">
                       网络类型
                     </Label>
 
                     {/* 网络类型选择器 */}
-                    <Select value={testNetwork} onValueChange={setTestNetwork}>
-                      <SelectTrigger className="hover:bg-accent/60 transition-colors rounded-md">
+                    <Select value={testNetwork} onValueChange={setTestNetwork} disabled={!enabledTestItems.network}>
+                      <SelectTrigger className="hover:bg-accent/60 transition-colors rounded-md flex-1">
                         <SelectValue placeholder="选择网络类型" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1548,6 +1579,16 @@ export default function ClashRuleTester() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="enable-uid"
+                    checked={enabledTestItems.uid}
+                    onCheckedChange={(checked) =>
+                      setEnabledTestItems((prev) => ({
+                        ...prev,
+                        uid: !!checked,
+                      }))
+                    }
+                  />
                   <Label
                     htmlFor="test-uid"
                     className="text-foreground text-sm min-w-[80px]"
@@ -1560,6 +1601,7 @@ export default function ClashRuleTester() {
                     onChange={(e) => setTestUID(e.target.value)}
                     placeholder="1000"
                     className="hover:bg-accent/60 transition-colors rounded-md flex-1"
+                    disabled={!enabledTestItems.uid}
                   />
                 </div>
               </div>
