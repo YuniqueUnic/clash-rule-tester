@@ -4,9 +4,10 @@ import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Pencil, Save } from "lucide-react";
+import { Download, Pencil, Redo, Save, Undo, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CheckCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface ClashRuleEditorProps {
   value: string;
@@ -59,9 +60,13 @@ export function ClashRuleEditor({
 }: ClashRuleEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [lineCount, setLineCount] = useState(1);
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(value);
+  const [history, setHistory] = useState<string[]>([value]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const { toast } = useToast();
 
   useEffect(() => {
     const lines = value.split("\n").length;
@@ -73,6 +78,11 @@ export function ClashRuleEditor({
       setLocalValue(value);
     }
   }, [value, isEditing]);
+
+  useEffect(() => {
+    setHistory([value]);
+    setHistoryIndex(0);
+  }, [value]);
 
   const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
     if (highlightRef.current) {
@@ -340,6 +350,109 @@ export function ClashRuleEditor({
     setIsEditing(false);
   };
 
+  // 撤销功能
+  const undo = () => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      const newValue = history[newIndex];
+      setHistoryIndex(newIndex);
+      if (isEditing) {
+        setLocalValue(newValue);
+      } else {
+        onChange(newValue);
+      }
+      toast({
+        title: "已撤销",
+        description: "上一步操作已撤销",
+      });
+    }
+  };
+
+  // 重做功能
+  const redo = () => {
+    if (historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1;
+      const newValue = history[newIndex];
+      setHistoryIndex(newIndex);
+      if (isEditing) {
+        setLocalValue(newValue);
+      } else {
+        onChange(newValue);
+      }
+      toast({
+        title: "已重做",
+        description: "已恢复下一步操作",
+      });
+    }
+  };
+
+  // 保存到历史记录
+  const saveToHistory = (newValue: string) => {
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newValue);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  };
+
+  // 导入功能
+  const importRules = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        if (isEditing) {
+          setLocalValue(content);
+          saveToHistory(content);
+        } else {
+          onChange(content);
+          saveToHistory(content);
+        }
+        toast({
+          title: "导入成功",
+          description: `已从 ${file.name} 导入规则配置`,
+        });
+      };
+      reader.readAsText(file);
+    }
+    // 重置文件输入
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // 导出功能
+  const exportRules = () => {
+    const currentValue = isEditing ? localValue : value;
+    const lines = currentValue.split("\n");
+    // 过滤掉注释行和空行
+    const rules = lines.filter((line) => {
+      const trimmed = line.trim();
+      return trimmed && !trimmed.startsWith("#");
+    });
+    const quotedRules = rules.map((rule) => `"${rule}"`);
+    const exportedContent = quotedRules.join("\n");
+
+    const blob = new Blob([exportedContent], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `clash-rules-${new Date().toISOString().split("T")[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "导出成功",
+      description: `已导出 ${rules.length} 条规则到文件（已过滤注释行）`,
+    });
+  };
+
   // 计算规则数量
   const getRuleCount = () => {
     if (ruleCount !== undefined) return ruleCount;
@@ -396,29 +509,81 @@ export function ClashRuleEditor({
           </div>
         </div>
 
-        {isEditing
-          ? (
+        <div className="flex items-center gap-2">
+          {/* 编辑功能按钮 */}
+          <div className="flex items-center gap-1">
             <Button
               size="sm"
-              variant="default"
-              onClick={handleSave}
-              className="h-7 rounded-md px-2 text-xs"
+              variant="ghost"
+              onClick={undo}
+              disabled={historyIndex <= 0}
+              className="h-7 w-7 p-0 rounded-md"
+              title="撤销"
             >
-              <Save className="h-3 w-3 mr-1" />
-              保存
+              <Undo className="h-3 w-3" />
             </Button>
-          )
-          : (
             <Button
               size="sm"
-              variant="outline"
-              onClick={handleEdit}
-              className="h-7 rounded-md px-2 text-xs bg-background/95 backdrop-blur-sm border-border/50 shadow-sm"
+              variant="ghost"
+              onClick={redo}
+              disabled={historyIndex >= history.length - 1}
+              className="h-7 w-7 p-0 rounded-md"
+              title="重做"
             >
-              <Pencil className="h-3 w-3 mr-1" />
-              编辑
+              <Redo className="h-3 w-3" />
             </Button>
-          )}
+            <div className="w-px h-4 bg-border mx-1" />
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={importRules}
+              className="h-7 w-7 p-0 rounded-md"
+              title="导入"
+            >
+              <Upload className="h-3 w-3" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={exportRules}
+              className="h-7 w-7 p-0 rounded-md"
+              title="导出"
+            >
+              <Download className="h-3 w-3" />
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".txt,.conf"
+              onChange={handleFileImport}
+              className="hidden"
+            />
+          </div>
+
+          {isEditing
+            ? (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={handleSave}
+                className="h-7 rounded-md px-2 text-xs"
+              >
+                <Save className="h-3 w-3 mr-1" />
+                保存
+              </Button>
+            )
+            : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleEdit}
+                className="h-7 rounded-md px-2 text-xs bg-background/95 backdrop-blur-sm border-border/50 shadow-sm"
+              >
+                <Pencil className="h-3 w-3 mr-1" />
+                编辑
+              </Button>
+            )}
+        </div>
       </div>
 
       {/* 编辑器主体区域 */}
@@ -442,10 +607,16 @@ export function ClashRuleEditor({
         <textarea
           ref={textareaRef}
           value={isEditing ? localValue : value}
-          onChange={(e) =>
-            isEditing
-              ? setLocalValue(e.target.value)
-              : onChange(e.target.value)}
+          onChange={(e) => {
+            const newValue = e.target.value;
+            if (isEditing) {
+              setLocalValue(newValue);
+              saveToHistory(newValue);
+            } else {
+              onChange(newValue);
+              saveToHistory(newValue);
+            }
+          }}
           onScroll={handleScroll}
           onKeyDown={handleKeyDown}
           className={cn(

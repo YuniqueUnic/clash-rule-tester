@@ -17,6 +17,8 @@ import { Slider } from "@/components/ui/slider";
 import {
   AlertTriangle,
   CheckCircle,
+  ChevronDown,
+  ChevronUp,
   Clock,
   Download,
   HelpCircle,
@@ -113,6 +115,53 @@ export default function ClashRuleTester() {
   const [testPort, setTestPort] = useState("443");
   const [testProcess, setTestProcess] = useState("chrome.exe");
   const [testProcessPath, setTestProcessPath] = useState("/usr/bin/chrome");
+
+  // 新增的测试输入字段
+  const [testSrcIPv4, setTestSrcIPv4] = useState("192.168.1.100");
+  const [testSrcIPv6, setTestSrcIPv6] = useState("2001:db8::1");
+  const [testSrcPort, setTestSrcPort] = useState("12345");
+  const [testDstIPv4, setTestDstIPv4] = useState("8.8.8.8");
+  const [testDstIPv6, setTestDstIPv6] = useState("2001:4860:4860::8888");
+  const [testDstPort, setTestDstPort] = useState("443");
+  const [testGeoIP, setTestGeoIP] = useState("US");
+  const [testNetwork, setTestNetwork] = useState("TCP");
+  const [testUID, setTestUID] = useState("1000");
+
+  // 网络类型管理
+  const [networkTypes, setNetworkTypes] = useState([
+    "TCP",
+    "UDP",
+    "ICMP",
+    "HTTP",
+    "HTTPS",
+    "SOCKS",
+    "TUN",
+  ]);
+  const [newNetworkType, setNewNetworkType] = useState("");
+
+  // IP 类型选择
+  const [srcIPType, setSrcIPType] = useState<"ipv4" | "ipv6" | "both">("both");
+  const [dstIPType, setDstIPType] = useState<"ipv4" | "ipv6" | "both">("both");
+
+  // 匹配结果面板展开状态
+  const [matchResultExpanded, setMatchResultExpanded] = useState(true);
+
+  // GeoIP 国家代码管理
+  const [geoIPCountries, setGeoIPCountries] = useState([
+    "US",
+    "CN",
+    "JP",
+    "KR",
+    "SG",
+    "HK",
+    "TW",
+    "GB",
+    "DE",
+    "FR",
+    "CA",
+    "AU",
+  ]);
+  const [newCountryCode, setNewCountryCode] = useState("");
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
   const [newRuleType, setNewRuleType] = useState("");
   const [newRuleContent, setNewRuleContent] = useState("");
@@ -213,6 +262,8 @@ export default function ClashRuleTester() {
       port: testPort,
       process: testProcess,
       processPath: testProcessPath,
+      network: testNetwork,
+      uid: testUID,
     };
 
     const result = ruleEngine.testRequest(testRequest);
@@ -418,6 +469,46 @@ export default function ClashRuleTester() {
     toast({
       title: "历史已清除",
       description: "所有测试历史和指标已清除",
+    });
+  };
+
+  const addCountry = () => {
+    const code = newCountryCode.trim().toUpperCase();
+    if (code && !geoIPCountries.includes(code)) {
+      setGeoIPCountries([...geoIPCountries, code]);
+      setNewCountryCode("");
+      toast({
+        title: "国家已添加",
+        description: `国家代码 ${code} 已添加`,
+      });
+    }
+  };
+
+  const removeCountry = (country: string) => {
+    setGeoIPCountries(geoIPCountries.filter((c) => c !== country));
+    toast({
+      title: "国家已删除",
+      description: `国家代码 ${country} 已删除`,
+    });
+  };
+
+  const addNetworkType = () => {
+    const type = newNetworkType.trim().toUpperCase();
+    if (type && !networkTypes.includes(type)) {
+      setNetworkTypes([...networkTypes, type]);
+      setNewNetworkType("");
+      toast({
+        title: "网络类型已添加",
+        description: `网络类型 ${type} 已添加`,
+      });
+    }
+  };
+
+  const removeNetworkType = (type: string) => {
+    setNetworkTypes(networkTypes.filter((t) => t !== type));
+    toast({
+      title: "网络类型已删除",
+      description: `网络类型 ${type} 已删除`,
     });
   };
 
@@ -666,8 +757,8 @@ export default function ClashRuleTester() {
         </div>
 
         {/* Middle Column: Rule Editor */}
-        <div className="flex-1">
-          <div className="h-full bg-card">
+        <div className="flex-1 flex flex-col">
+          <div className="flex-1 bg-card">
             <ClashRuleEditor
               value={rules}
               onChange={setRules}
@@ -678,6 +769,166 @@ export default function ClashRuleTester() {
               errorCount={validationResults.length}
             />
           </div>
+
+          {/* Expandable Match Result Panel */}
+          {true && (
+            <div className="bg-card border-t border-border">
+              <div className="p-3 border-b border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {matchResult
+                      ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          <span className="text-sm font-medium text-foreground">
+                            匹配结果
+                          </span>
+                          <Badge
+                            variant={matchResult.policy === "DIRECT"
+                              ? "default"
+                              : matchResult.policy === "PROXY"
+                              ? "secondary"
+                              : "destructive"}
+                            className="text-xs rounded-md font-semibold"
+                          >
+                            {matchResult.policy}
+                          </Badge>
+                          <span>
+                            <span className="text-muted-foreground text-sm">
+                              代码 line {matchResult.lineNumber}{" "}
+                              / 匹配规则：{matchResult.rule}
+                            </span>
+                          </span>
+                        </>
+                      )
+                      : (
+                        <>
+                          <Play className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-medium text-foreground">
+                            匹配结果
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className="text-xs rounded-md"
+                          >
+                            等待测试
+                          </Badge>
+                        </>
+                      )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isTestingInProgress && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        测试中...
+                      </div>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setMatchResultExpanded(!matchResultExpanded)}
+                      className="h-6 w-6 p-0"
+                    >
+                      {matchResultExpanded
+                        ? <ChevronDown className="h-3 w-3" />
+                        : <ChevronUp className="h-3 w-3" />}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {matchResultExpanded && (
+                <div className="p-4 space-y-3">
+                  {matchResult
+                    ? (
+                      <div className="p-3 bg-muted/40 rounded-lg border border-muted hover:bg-muted/60 transition-colors">
+                        <div className="flex items-start gap-2 mb-2">
+                          <div className="font-medium text-sm text-foreground">
+                            详细匹配信息
+                          </div>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div className="p-2 bg-background/80 rounded-md border border-border/50">
+                            <div className="text-foreground/90 leading-relaxed text-xs">
+                              {matchResult.detailedExplanation}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-1 mt-2">
+                            {matchResult.matchedContent && (
+                              <div className="flex items-center gap-2 text-xs">
+                                <span className="text-muted-foreground font-medium">
+                                  匹配内容：
+                                </span>
+                                <code className="bg-accent/30 px-2 py-1 rounded text-foreground font-mono">
+                                  {matchResult.matchedContent}
+                                </code>
+                              </div>
+                            )}
+                            {matchResult.matchPosition && (
+                              <div className="flex items-center gap-2 text-xs">
+                                <span className="text-muted-foreground font-medium">
+                                  匹配位置：
+                                </span>
+                                <code className="bg-accent/30 px-2 py-1 rounded text-foreground font-mono">
+                                  {matchResult.matchPosition}
+                                </code>
+                              </div>
+                            )}
+                            {matchResult.matchRange && (
+                              <div className="flex items-center gap-2 text-xs">
+                                <span className="text-muted-foreground font-medium">
+                                  覆盖范围：
+                                </span>
+                                <code className="bg-accent/30 px-2 py-1 rounded text-foreground font-mono">
+                                  {matchResult.matchRange}
+                                </code>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                    : (
+                      <div className="p-3 bg-muted/40 rounded-lg border border-muted hover:bg-muted/60 transition-colors">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Play className="h-4 w-4" />
+                          <span className="text-sm">等待测试结果...</span>
+                        </div>
+                      </div>
+                    )}
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full hover:scale-[1.02] hover:shadow-sm transition-all duration-200 hover:bg-accent/80 rounded-md border border-border/50"
+                    onClick={explainRule}
+                    disabled={!aiService.isConfigured() || isExplaining}
+                  >
+                    {isExplaining
+                      ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      : <HelpCircle className="h-4 w-4 mr-2" />}
+                    AI 深度解释规则
+                  </Button>
+
+                  {ruleExplanation && (
+                    <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:shadow-sm transition-all duration-200">
+                      <div className="flex items-start gap-2 mb-2">
+                        <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                        <div className="font-medium text-sm text-blue-900 dark:text-blue-100">
+                          AI 解释
+                        </div>
+                      </div>
+                      <div className="text-sm text-blue-900 dark:text-blue-100 whitespace-pre-wrap leading-relaxed">
+                        {ruleExplanation}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right Column: Enhanced Test Panel and Results */}
@@ -724,8 +975,8 @@ export default function ClashRuleTester() {
                 )}
               </div>
               <div className="p-4 space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="test-domain" className="text-foreground">
+                <div className="grid grid-cols-1 gap-1">
+                  <Label htmlFor="test-domain" className="text-foreground text-sm">
                     域名
                   </Label>
                   <Input
@@ -737,8 +988,8 @@ export default function ClashRuleTester() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="test-ip" className="text-foreground">
+                <div className="grid grid-cols-1 gap-1">
+                  <Label htmlFor="test-ip" className="text-foreground text-sm">
                     IP 地址
                   </Label>
                   <Input
@@ -750,8 +1001,8 @@ export default function ClashRuleTester() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="test-port" className="text-foreground">
+                <div className="grid grid-cols-1 gap-1">
+                  <Label htmlFor="test-port" className="text-foreground text-sm">
                     端口
                   </Label>
                   <Input
@@ -763,8 +1014,8 @@ export default function ClashRuleTester() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="test-process" className="text-foreground">
+                <div className="grid grid-cols-1 gap-1">
+                  <Label htmlFor="test-process" className="text-foreground text-sm">
                     进程
                   </Label>
                   <Input
@@ -776,10 +1027,10 @@ export default function ClashRuleTester() {
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-1">
                   <Label
                     htmlFor="test-process-path"
-                    className="text-foreground"
+                    className="text-foreground text-sm"
                   >
                     进程路径
                   </Label>
@@ -788,6 +1039,245 @@ export default function ClashRuleTester() {
                     value={testProcessPath}
                     onChange={(e) => setTestProcessPath(e.target.value)}
                     placeholder="/usr/bin/chrome"
+                    className="hover:bg-accent/60 transition-colors rounded-md"
+                  />
+                </div>
+
+                {/* Source IP Configuration */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 justify-between">
+                    <Label className="text-foreground min-w-fit">源 IP:</Label>
+                    <Select
+                      value={srcIPType}
+                      onValueChange={(value: "ipv4" | "ipv6" | "both") =>
+                        setSrcIPType(value)}
+                    >
+                      <SelectTrigger className="w-32 hover:bg-accent/60 transition-colors rounded-md">
+                        <SelectValue placeholder="类型" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ipv4">IPv4</SelectItem>
+                        <SelectItem value="ipv6">IPv6</SelectItem>
+                        <SelectItem value="both">Both</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    {(srcIPType === "ipv4" || srcIPType === "both") && (
+                      <Input
+                        value={testSrcIPv4}
+                        onChange={(e) => setTestSrcIPv4(e.target.value)}
+                        placeholder="192.168.1.100"
+                        className="hover:bg-accent/60 transition-colors rounded-md"
+                      />
+                    )}
+                    {(srcIPType === "ipv6" || srcIPType === "both") && (
+                      <Input
+                        value={testSrcIPv6}
+                        onChange={(e) => setTestSrcIPv6(e.target.value)}
+                        placeholder="2001:db8::1"
+                        className="hover:bg-accent/60 transition-colors rounded-md"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-1">
+                  <Label htmlFor="test-src-port" className="text-foreground text-sm">
+                    源端口
+                  </Label>
+                  <Input
+                    id="test-src-port"
+                    value={testSrcPort}
+                    onChange={(e) => setTestSrcPort(e.target.value)}
+                    placeholder="12345"
+                    className="hover:bg-accent/60 transition-colors rounded-md"
+                  />
+                </div>
+
+                {/* Destination IP Configuration */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 justify-between">
+                    <Label className="text-foreground min-w-fit">
+                      目标 IP:
+                    </Label>
+                    <Select
+                      value={dstIPType}
+                      onValueChange={(value: "ipv4" | "ipv6" | "both") =>
+                        setDstIPType(value)}
+                    >
+                      <SelectTrigger className="w-32 hover:bg-accent/60 transition-colors rounded-md">
+                        <SelectValue placeholder="类型" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ipv4">IPv4</SelectItem>
+                        <SelectItem value="ipv6">IPv6</SelectItem>
+                        <SelectItem value="both">Both</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    {(dstIPType === "ipv4" || dstIPType === "both") && (
+                      <Input
+                        value={testDstIPv4}
+                        onChange={(e) => setTestDstIPv4(e.target.value)}
+                        placeholder="8.8.8.8"
+                        className="hover:bg-accent/60 transition-colors rounded-md"
+                      />
+                    )}
+                    {(dstIPType === "ipv6" || dstIPType === "both") && (
+                      <Input
+                        value={testDstIPv6}
+                        onChange={(e) => setTestDstIPv6(e.target.value)}
+                        placeholder="2001:4860:4860::8888"
+                        className="hover:bg-accent/60 transition-colors rounded-md"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-1">
+                  <Label htmlFor="test-dst-port" className="text-foreground text-sm">
+                    目标端口
+                  </Label>
+                  <Input
+                    id="test-dst-port"
+                    value={testDstPort}
+                    onChange={(e) => setTestDstPort(e.target.value)}
+                    placeholder="443"
+                    className="hover:bg-accent/60 transition-colors rounded-md"
+                  />
+                </div>
+
+                {/* GeoIP Country */}
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <Label htmlFor="test-geoip" className="text-foreground">
+                      GeoIP 国家
+                    </Label>
+
+                    {/* 国家选择器 */}
+                    <Select value={testGeoIP} onValueChange={setTestGeoIP}>
+                      <SelectTrigger className="hover:bg-accent/60 transition-colors rounded-md">
+                        <SelectValue placeholder="选择国家" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {geoIPCountries.map((country) => (
+                          <SelectItem key={country} value={country}>
+                            {country}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* 国家代码管理 */}
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        value={newCountryCode}
+                        onChange={(e) => setNewCountryCode(e.target.value)}
+                        placeholder="输入国家代码"
+                        className="flex-1 rounded-md text-xs"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            addCountry();
+                          }
+                        }}
+                      />
+                      <Button
+                        onClick={addCountry}
+                        size="sm"
+                        disabled={!newCountryCode.trim()}
+                        className="px-3 rounded-md"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+                      {geoIPCountries.map((country) => (
+                        <Badge
+                          key={country}
+                          variant="secondary"
+                          className="text-xs px-2 py-1 cursor-pointer hover:bg-accent/80"
+                          onClick={() => removeCountry(country)}
+                        >
+                          {country} ×
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 网络类型管理 */}
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <Label htmlFor="test-network" className="text-foreground">
+                      网络类型
+                    </Label>
+
+                    {/* 网络类型选择器 */}
+                    <Select value={testNetwork} onValueChange={setTestNetwork}>
+                      <SelectTrigger className="hover:bg-accent/60 transition-colors rounded-md">
+                        <SelectValue placeholder="选择网络类型" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {networkTypes.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* 网络类型管理 */}
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        value={newNetworkType}
+                        onChange={(e) => setNewNetworkType(e.target.value)}
+                        placeholder="输入网络类型"
+                        className="flex-1 rounded-md text-xs"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            addNetworkType();
+                          }
+                        }}
+                      />
+                      <Button
+                        onClick={addNetworkType}
+                        size="sm"
+                        disabled={!newNetworkType.trim()}
+                        className="px-3 rounded-md"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+                      {networkTypes.map((type) => (
+                        <Badge
+                          key={type}
+                          variant="secondary"
+                          className="text-xs px-2 py-1 cursor-pointer hover:bg-accent/80"
+                          onClick={() => removeNetworkType(type)}
+                        >
+                          {type} ×
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-1">
+                  <Label htmlFor="test-uid" className="text-foreground text-sm">
+                    用户 ID
+                  </Label>
+                  <Input
+                    id="test-uid"
+                    value={testUID}
+                    onChange={(e) => setTestUID(e.target.value)}
+                    placeholder="1000"
                     className="hover:bg-accent/60 transition-colors rounded-md"
                   />
                 </div>
@@ -844,140 +1334,6 @@ export default function ClashRuleTester() {
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Enhanced Match Result Panel */}
-            <div className="bg-card border border-border rounded-lg">
-              <div className="p-4 border-b border-border">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-foreground">
-                    匹配结果
-                  </h3>
-                  {isTestingInProgress && (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      测试中...
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="p-4">
-                {matchResult
-                  ? (
-                    <div className="space-y-4">
-                      <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:shadow-sm transition-all duration-200">
-                        <div className="flex items-center justify-between mb-2">
-                          <Badge
-                            variant="outline"
-                            className="rounded-md text-xs font-mono"
-                          >
-                            第 {matchResult.lineNumber} 行
-                          </Badge>
-                          <Badge
-                            variant={matchResult.policy === "DIRECT"
-                              ? "default"
-                              : matchResult.policy === "PROXY"
-                              ? "secondary"
-                              : "destructive"}
-                            className="hover:scale-105 transition-transform rounded-md font-semibold"
-                          >
-                            {matchResult.policy}
-                          </Badge>
-                        </div>
-                        <code className="text-sm font-mono text-foreground block p-2 bg-white/50 dark:bg-black/20 rounded border">
-                          {matchResult.rule}
-                        </code>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div className="p-4 bg-muted/40 rounded-lg border border-muted hover:bg-muted/60 transition-colors">
-                          <div className="flex items-start gap-2 mb-3">
-                            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-                            <div className="font-medium text-sm text-foreground">
-                              详细匹配信息
-                            </div>
-                          </div>
-                          <div className="space-y-2 text-sm">
-                            <div className="p-3 bg-background/80 rounded-md border border-border/50">
-                              <div className="text-foreground/90 leading-relaxed">
-                                {matchResult.detailedExplanation}
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 gap-2 mt-3">
-                              {matchResult.matchedContent && (
-                                <div className="flex items-center gap-2 text-xs">
-                                  <span className="text-muted-foreground font-medium">
-                                    匹配内容：
-                                  </span>
-                                  <code className="bg-accent/30 px-2 py-1 rounded text-foreground font-mono">
-                                    {matchResult.matchedContent}
-                                  </code>
-                                </div>
-                              )}
-                              {matchResult.matchPosition && (
-                                <div className="flex items-center gap-2 text-xs">
-                                  <span className="text-muted-foreground font-medium">
-                                    匹配位置：
-                                  </span>
-                                  <code className="bg-accent/30 px-2 py-1 rounded text-foreground font-mono">
-                                    {matchResult.matchPosition}
-                                  </code>
-                                </div>
-                              )}
-                              {matchResult.matchRange && (
-                                <div className="flex items-center gap-2 text-xs">
-                                  <span className="text-muted-foreground font-medium">
-                                    覆盖范围：
-                                  </span>
-                                  <code className="bg-accent/30 px-2 py-1 rounded text-foreground font-mono">
-                                    {matchResult.matchRange}
-                                  </code>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full hover:scale-[1.02] hover:shadow-sm transition-all duration-200 hover:bg-accent/80 rounded-md border border-border/50"
-                          onClick={explainRule}
-                          disabled={!aiService.isConfigured() || isExplaining}
-                        >
-                          {isExplaining
-                            ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            : <HelpCircle className="h-4 w-4 mr-2" />}
-                          AI 深度解释规则
-                        </Button>
-
-                        {ruleExplanation && (
-                          <div className="mt-3 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:shadow-sm transition-all duration-200">
-                            <div className="flex items-start gap-2 mb-2">
-                              <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                              <div className="font-medium text-sm text-blue-900 dark:text-blue-100">
-                                AI 解释
-                              </div>
-                            </div>
-                            <div className="text-sm text-blue-900 dark:text-blue-100 whitespace-pre-wrap leading-relaxed">
-                              {ruleExplanation}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                  : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Play className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">运行测试查看结果</p>
-                      <p className="text-xs mt-1 opacity-75">
-                        {autoTest ? "自动测试已启用" : "按 Ctrl+Enter 快速测试"}
-                      </p>
-                    </div>
-                  )}
               </div>
             </div>
 

@@ -9,6 +9,14 @@ export interface TestRequest {
   network?: string;
   uid?: string;
   inType?: string;
+  // 新增的测试字段
+  srcIPv4?: string;
+  srcIPv6?: string;
+  srcPort?: string;
+  dstIPv4?: string;
+  dstIPv6?: string;
+  dstPort?: string;
+  geoIP?: string;
 }
 
 export interface MatchResult {
@@ -57,6 +65,34 @@ export class ClashRuleEngine {
         isLogical: ["AND", "OR", "NOT"].includes(ruleType),
       });
     });
+  }
+
+  // 匹配源IP CIDR
+  private matchSrcIPCIDR(request: TestRequest, cidr: string): boolean {
+    const ip = request.srcIPv4 || request.srcIPv6;
+    if (!ip) return false;
+    return this.matchIPCIDR(ip, cidr);
+  }
+
+  // 匹配目标IP CIDR
+  private matchDstIPCIDR(request: TestRequest, cidr: string): boolean {
+    const ip = request.dstIPv4 || request.dstIPv6;
+    if (!ip) return false;
+    return this.matchIPCIDR(ip, cidr);
+  }
+
+  // 匹配源端口
+  private matchSrcPort(request: TestRequest, portPattern: string): boolean {
+    const port = request.srcPort;
+    if (!port) return false;
+    return this.matchPort(port, portPattern);
+  }
+
+  // 匹配目标端口
+  private matchDstPort(request: TestRequest, portPattern: string): boolean {
+    const port = request.dstPort || request.port;
+    if (!port) return false;
+    return this.matchPort(port, portPattern);
   }
 
   public testRequest(request: TestRequest): MatchResult | null {
@@ -206,22 +242,39 @@ export class ClashRuleEngine {
         break;
 
       case "DST-PORT":
+        matched = this.matchDstPort(request, content);
+        matchedContent = request.dstPort || request.port || "";
+        matchPosition = content;
+        explanation = matched
+          ? `目标端口 "${matchedContent}" matches "${content}"`
+          : `目标端口 "${matchedContent}" does not match "${content}"`;
+        detailedExplanation = matched
+          ? `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：目标端口 ${matchedContent} 被上述规则捕获，匹配端口：${content}`
+          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：目标端口 ${matchedContent} 未被此规则匹配，不匹配端口：${content}`;
+        break;
+
       case "SRC-PORT":
+        matched = this.matchSrcPort(request, content);
+        matchedContent = request.srcPort || "";
+        matchPosition = content;
+        explanation = matched
+          ? `源端口 "${matchedContent}" matches "${content}"`
+          : `源端口 "${matchedContent}" does not match "${content}"`;
+        detailedExplanation = matched
+          ? `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：源端口 ${matchedContent} 被上述规则捕获，匹配端口：${content}`
+          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：源端口 ${matchedContent} 未被此规则匹配，不匹配端口：${content}`;
+        break;
+
       case "IN-PORT":
         matched = this.matchPort(request.port, content);
         matchedContent = request.port || "";
         matchPosition = content;
-        const portType = ruleType === "DST-PORT"
-          ? "目标端口"
-          : ruleType === "SRC-PORT"
-          ? "源端口"
-          : "入站端口";
         explanation = matched
-          ? `${portType} "${request.port}" matches "${content}"`
-          : `${portType} "${request.port}" does not match "${content}"`;
+          ? `入站端口 "${request.port}" matches "${content}"`
+          : `入站端口 "${request.port}" does not match "${content}"`;
         detailedExplanation = matched
-          ? `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${portType} ${request.port} 被上述规则捕获，匹配端口：${content}`
-          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${portType} ${request.port} 未被此规则匹配，不匹配端口：${content}`;
+          ? `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：入站端口 ${request.port} 被上述规则捕获，匹配端口：${content}`
+          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：入站端口 ${request.port} 未被此规则匹配，不匹配端口：${content}`;
         break;
 
       case "MATCH":
@@ -300,15 +353,27 @@ export class ClashRuleEngine {
         break;
 
       case "SRC-IP-CIDR":
-        matched = this.matchIPCIDR(request.ip, content);
-        matchedContent = request.ip || "";
+        matched = this.matchSrcIPCIDR(request, content);
+        matchedContent = request.srcIPv4 || request.srcIPv6 || "";
         matchPosition = content;
         explanation = matched
-          ? `Source IP "${request.ip}" is within CIDR range "${content}"`
-          : `Source IP "${request.ip}" is not within CIDR range "${content}"`;
+          ? `Source IP "${matchedContent}" is within CIDR range "${content}"`
+          : `Source IP "${matchedContent}" is not within CIDR range "${content}"`;
         detailedExplanation = matched
-          ? `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：源 IP ${request.ip} 被上述规则捕获，属于 CIDR 范围：${content}`
-          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：源 IP ${request.ip} 未被此规则匹配，不属于 CIDR 范围：${content}`;
+          ? `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：源 IP ${matchedContent} 被上述规则捕获，属于 CIDR 范围：${content}`
+          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：源 IP ${matchedContent} 未被此规则匹配，不属于 CIDR 范围：${content}`;
+        break;
+
+      case "DST-IP-CIDR":
+        matched = this.matchDstIPCIDR(request, content);
+        matchedContent = request.dstIPv4 || request.dstIPv6 || "";
+        matchPosition = content;
+        explanation = matched
+          ? `目标 IP "${matchedContent}" is within CIDR range "${content}"`
+          : `目标 IP "${matchedContent}" is not within CIDR range "${content}"`;
+        detailedExplanation = matched
+          ? `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：目标 IP ${matchedContent} 被上述规则捕获，属于 CIDR 范围：${content}`
+          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：目标 IP ${matchedContent} 未被此规则匹配，不属于 CIDR 范围：${content}`;
         break;
 
       case "RULE-SET":
@@ -677,6 +742,7 @@ export class ClashRuleEngine {
       "SRC-PORT",
       "IN-PORT",
       "SRC-IP-CIDR",
+      "DST-IP-CIDR",
       "RULE-SET",
       "AND",
       "OR",
