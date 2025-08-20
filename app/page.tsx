@@ -335,6 +335,7 @@ export default function ClashRuleTester() {
     testGeoIP,
     testNetwork,
     testUID,
+    enabledTestItems, // Add enabledTestItems to dependencies
     ruleEngine,
     toast,
   ]);
