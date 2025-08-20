@@ -1,13 +1,25 @@
 "use client";
 
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Download, Pencil, Redo, Save, Undo, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+// CodeMirror 6 imports
+import { EditorView } from "@codemirror/view";
+import { EditorState } from "@codemirror/state";
+import { basicSetup } from "codemirror";
+import { keymap } from "@codemirror/view";
+import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+import { language } from "@codemirror/language";
+import { syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
+import { Decoration, DecorationSet } from "@codemirror/view";
+import { RangeSetBuilder } from "@codemirror/state";
+import { autocompletion } from "@codemirror/autocomplete";
 
 interface ClashRuleEditorProps {
   value: string;
@@ -49,6 +61,75 @@ const CLASH_RULE_TYPES = [
 
 const CLASH_POLICIES = ["DIRECT", "PROXY", "REJECT", "PASS"];
 
+// Clash规则语法高亮
+const clashHighlighting = syntaxHighlighting(defaultHighlightStyle, { fallback: true });
+
+// 代码补全配置
+const clashCompletion = autocompletion({
+  override: [
+    (context) => {
+      const word = context.matchBefore(/\w*/);
+      if (!word || (word.from === word.to && !context.explicit)) return null;
+
+      const completions = [
+        // 规则类型
+        ...CLASH_RULE_TYPES.map(type => ({ label: type, type: "keyword" })),
+        // 策略
+        ...CLASH_POLICIES.map(policy => ({ label: policy, type: "constant" })),
+        // 常见域名后缀
+        { label: "google.com", type: "text" },
+        { label: "github.com", type: "text" },
+        { label: "youtube.com", type: "text" },
+        { label: "facebook.com", type: "text" },
+        { label: "twitter.com", type: "text" },
+        // 常见端口
+        { label: "80", type: "number" },
+        { label: "443", type: "number" },
+        { label: "8080", type: "number" },
+        // 常见国家代码
+        { label: "CN", type: "constant" },
+        { label: "US", type: "constant" },
+        { label: "JP", type: "constant" },
+        { label: "KR", type: "constant" },
+        { label: "HK", type: "constant" },
+        { label: "TW", type: "constant" },
+        // 常见进程名
+        { label: "chrome.exe", type: "text" },
+        { label: "firefox.exe", type: "text" },
+      ];
+
+      return {
+        from: word.from,
+        options: completions.filter(c =>
+          c.label.toLowerCase().includes(word.text.toLowerCase())
+        ),
+      };
+    },
+  ],
+});
+
+// 行高亮装饰器
+const lineHighlight = (lineNumber: number) => {
+  return EditorView.decorations.of((view: EditorView) => {
+    const builder = new RangeSetBuilder<Decoration>();
+    const state = view.state;
+    const doc = state.doc;
+
+    if (lineNumber && lineNumber <= doc.lines) {
+      const line = doc.line(lineNumber);
+      builder.add(
+        line.from,
+        line.to,
+        Decoration.line({
+          class: "bg-blue-50 dark:bg-blue-950/30 border-l-2 border-blue-500",
+        })
+      );
+    }
+
+    return builder.finish();
+  });
+};
+
 export function ClashRuleEditor({
   value,
   onChange,
@@ -58,9 +139,9 @@ export function ClashRuleEditor({
   hasError,
   errorCount,
 }: ClashRuleEditorProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const highlightRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editorViewRef = useRef<EditorView | null>(null);
   const [lineCount, setLineCount] = useState(1);
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(value);
@@ -84,12 +165,59 @@ export function ClashRuleEditor({
     setHistoryIndex(0);
   }, [value]);
 
-  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
-    if (highlightRef.current) {
-      highlightRef.current.scrollTop = e.currentTarget.scrollTop;
-      highlightRef.current.scrollLeft = e.currentTarget.scrollLeft;
+  // 初始化CodeMirror编辑器
+  useEffect(() => {
+    if (editorRef.current && isEditing) {
+      const state = EditorState.create({
+        doc: localValue,
+        extensions: [
+          basicSetup,
+          syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+          keymap.of([indentWithTab, ...defaultKeymap]),
+          clashCompletion,
+          highlightedLine ? lineHighlight(highlightedLine) : [],
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged) {
+              const newValue = update.state.doc.toString();
+              setLocalValue(newValue);
+              saveToHistory(newValue);
+              if (!isEditing) {
+                onChange(newValue);
+              }
+            }
+          }),
+        ],
+      });
+
+      const view = new EditorView({
+        state,
+        parent: editorRef.current,
+      });
+
+      editorViewRef.current = view;
+
+      return () => {
+        view.destroy();
+        editorViewRef.current = null;
+      };
     }
-  };
+  }, [isEditing, highlightedLine]);
+
+  // 更新编辑器内容
+  useEffect(() => {
+    if (editorViewRef.current && isEditing) {
+      const currentValue = editorViewRef.current.state.doc.toString();
+      if (currentValue !== localValue) {
+        editorViewRef.current.dispatch({
+          changes: {
+            from: 0,
+            to: currentValue.length,
+            insert: localValue,
+          },
+        });
+      }
+    }
+  }, [localValue, isEditing]);
 
   const highlightSyntax = (text: string, isEditingMode: boolean = false) => {
     const lines = text.split("\n");
@@ -320,34 +448,20 @@ export function ClashRuleEditor({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      const start = e.currentTarget.selectionStart;
-      const end = e.currentTarget.selectionEnd;
-      const newValue = localValue.substring(0, start) + "  " +
-        localValue.substring(end);
-      setLocalValue(newValue);
+  // CodeMirror处理键盘事件，不需要额外的处理
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // CodeMirror会处理键盘事件
+  };
 
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.selectionStart =
-            textareaRef.current
-              .selectionEnd =
-              start + 2;
-        }
-      }, 0);
-    }
+
+  const handleSave = () => {
+    onChange(localValue);
+    setIsEditing(false);
   };
 
   const handleEdit = () => {
     setIsEditing(true);
     setLocalValue(value);
-  };
-
-  const handleSave = () => {
-    onChange(localValue);
-    setIsEditing(false);
   };
 
   // 撤销功能
@@ -588,58 +702,33 @@ export function ClashRuleEditor({
 
       {/* 编辑器主体区域 */}
       <div className="flex-1 relative">
-        <div
-          ref={highlightRef}
-          className={cn(
-            "absolute inset-0 overflow-auto font-mono text-sm leading-6 pointer-events-none whitespace-pre-wrap break-words",
-            "p-3 pl-0 pr-3",
-          )}
-          style={{
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-          }}
-        >
-          <div className="min-h-full">
-            {highlightSyntax(isEditing ? localValue : value, isEditing)}
+        {isEditing ? (
+          // CodeMirror 6 编辑器
+          <div
+            ref={editorRef}
+            className="w-full h-full overflow-hidden"
+            style={{
+              fontSize: '14px',
+              fontFamily: 'var(--font-mono)',
+            }}
+          />
+        ) : (
+          // 非编辑模式下显示语法高亮
+          <div
+            className={cn(
+              "absolute inset-0 overflow-auto font-mono text-sm leading-6 whitespace-pre-wrap break-words",
+              "p-3 pl-0 pr-3",
+            )}
+            style={{
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+            }}
+          >
+            <div className="min-h-full">
+              {highlightSyntax(value, false)}
+            </div>
           </div>
-        </div>
-
-        <textarea
-          ref={textareaRef}
-          value={isEditing ? localValue : value}
-          onChange={(e) => {
-            const newValue = e.target.value;
-            if (isEditing) {
-              setLocalValue(newValue);
-              saveToHistory(newValue);
-            } else {
-              onChange(newValue);
-              saveToHistory(newValue);
-            }
-          }}
-          onScroll={handleScroll}
-          onKeyDown={handleKeyDown}
-          className={cn(
-            "absolute inset-0 w-full h-full font-mono text-sm leading-6 resize-none outline-none",
-            "bg-transparent caret-foreground",
-            // 在非编辑模式下隐藏文本
-            !isEditing && "text-transparent",
-            // 在编辑模式下确保文本可见
-            isEditing && "text-foreground",
-            "p-3 pl-12 pr-4",
-            "scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border/30",
-          )}
-          style={{
-            caretColor: "hsl(var(--foreground))",
-          }}
-          spellCheck={false}
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          placeholder="输入您的 CLASH 规则配置..."
-          aria-label="CLASH 规则编辑器"
-          readOnly={!isEditing}
-        />
+        )}
       </div>
     </div>
   );
