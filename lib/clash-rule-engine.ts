@@ -63,14 +63,14 @@ export class ClashRuleEngine {
     });
   }
 
-  // 匹配源IP CIDR
+  // 匹配源 IP CIDR
   private matchSrcIPCIDR(request: TestRequest, cidr: string): boolean {
     const ip = request.srcIPv4 || request.srcIPv6;
     if (!ip) return false;
     return this.matchIPCIDR(ip, cidr);
   }
 
-  // 匹配目标IP CIDR
+  // 匹配目标 IP CIDR
   private matchDstIPCIDR(request: TestRequest, cidr: string): boolean {
     const ip = request.dstIPv4 || request.dstIPv6;
     if (!ip) return false;
@@ -86,7 +86,7 @@ export class ClashRuleEngine {
 
   // 匹配目标端口
   private matchDstPort(request: TestRequest, portPattern: string): boolean {
-    const port = request.dstPort || request.port;
+    const port = request.dstPort;
     if (!port) return false;
     return this.matchPort(port, portPattern);
   }
@@ -185,7 +185,9 @@ export class ClashRuleEngine {
           : `IP "${targetIP || "N/A"}" is not within CIDR range "${content}"`;
         detailedExplanation = matched
           ? `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${targetIP} 被上述规则捕获，${content} 覆盖了 ${matchRange}`
-          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${targetIP || "N/A"} 未被此规则匹配，不在 CIDR 范围 ${content} 内`;
+          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${
+            targetIP || "N/A"
+          } 未被此规则匹配，不在 CIDR 范围 ${content} 内`;
         break;
 
       case "IP-CIDR6":
@@ -195,10 +197,14 @@ export class ClashRuleEngine {
         matchPosition = content;
         explanation = matched
           ? `IPv6 "${targetIPv6}" is within CIDR range "${content}"`
-          : `IPv6 "${targetIPv6 || "N/A"}" is not within CIDR range "${content}"`;
+          : `IPv6 "${
+            targetIPv6 || "N/A"
+          }" is not within CIDR range "${content}"`;
         detailedExplanation = matched
           ? `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${targetIPv6} 被上述规则捕获，IPv6 CIDR 范围：${content}`
-          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${targetIPv6 || "N/A"} 未被此规则匹配，不在 IPv6 CIDR 范围 ${content} 内`;
+          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${
+            targetIPv6 || "N/A"
+          } 未被此规则匹配，不在 IPv6 CIDR 范围 ${content} 内`;
         break;
 
       case "GEOIP":
@@ -211,7 +217,9 @@ export class ClashRuleEngine {
           : `IP "${geoIP || "N/A"}" is not geolocated to "${content}"`;
         detailedExplanation = matched
           ? `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${geoIP} 被上述规则捕获，地理位置匹配：${content}`
-          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${geoIP || "N/A"} 未被此规则匹配，地理位置不是：${content}`;
+          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${
+            geoIP || "N/A"
+          } 未被此规则匹配，地理位置不是：${content}`;
         break;
 
       case "PROCESS-NAME":
@@ -249,7 +257,9 @@ export class ClashRuleEngine {
           : `目标端口 "${matchedContent || "N/A"}" does not match "${content}"`;
         detailedExplanation = matched
           ? `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：目标端口 ${matchedContent} 被上述规则捕获，匹配端口：${content}`
-          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：目标端口 ${matchedContent || "N/A"} 未被此规则匹配，不匹配端口：${content}`;
+          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：目标端口 ${
+            matchedContent || "N/A"
+          } 未被此规则匹配，不匹配端口：${content}`;
         break;
 
       case "SRC-PORT":
@@ -274,7 +284,9 @@ export class ClashRuleEngine {
           : `入站端口 "${inPort || "N/A"}" does not match "${content}"`;
         detailedExplanation = matched
           ? `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：入站端口 ${inPort} 被上述规则捕获，匹配端口：${content}`
-          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：入站端口 ${inPort || "N/A"} 未被此规则匹配，不匹配端口：${content}`;
+          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：入站端口 ${
+            inPort || "N/A"
+          } 未被此规则匹配，不匹配端口：${content}`;
         break;
 
       case "MATCH":
@@ -316,7 +328,9 @@ export class ClashRuleEngine {
           : `IP "${asnIP || "N/A"}" does not belong to ASN "${content}"`;
         detailedExplanation = matched
           ? `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${asnIP} 被上述规则捕获，属于 ASN：${content}`
-          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${asnIP || "N/A"} 未被此规则匹配，不属于 ASN：${content}`;
+          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${
+            asnIP || "N/A"
+          } 未被此规则匹配，不属于 ASN：${content}`;
         break;
 
       case "GEOSITE":

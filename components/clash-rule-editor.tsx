@@ -8,10 +8,12 @@ import { Download, Redo, Save, Undo, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "next-themes";
 
 // CodeMirror 6 imports
 import {
   Decoration,
+  DecorationSet,
   EditorView,
   ViewPlugin,
   ViewUpdate,
@@ -41,6 +43,8 @@ import {
 } from "@codemirror/autocomplete";
 import { Diagnostic, linter, lintGutter } from "@codemirror/lint";
 import { StringStream } from "@codemirror/language";
+import { oneDark } from "@codemirror/theme-one-dark";
+import { ClashDataSources } from "@/lib/clash-data-sources";
 
 // Clash 规则语法高亮器
 // 这的 d 规则语法高亮器写得有问题：
@@ -50,128 +54,230 @@ import { StringStream } from "@codemirror/language";
 // 4. 逗号
 // 5. 策略名称
 // 但是只有 MATCH 这个规则类型特殊一点，MATCH，策略名称 这样的格了
-const createClashLanguage = (policies: string[] = ["DIRECT", "PROXY", "REJECT", "PASS"]) => StreamLanguage.define({
-  token(stream: StringStream, state: any) {
-    const line = stream.string;
+// 改进的 Clash 规则语法高亮器
+const createClashLanguage = (
+  policies: string[] = ["DIRECT", "PROXY", "REJECT", "PASS"],
+) => {
+  const clashLanguage = StreamLanguage.define({
+    token(stream: StringStream, state: any) {
+      // 跳过空白字符
+      if (stream.eatSpace()) return null;
 
-    // 跳过空白字符
-    if (stream.eatSpace()) return null;
+      // 注释行
+      if (stream.match(/^#.*/)) {
+        return "comment";
+      }
 
-    // 注释
-    if (stream.match(/^#.*/)) {
-      return "comment";
-    }
-
-    // 解析当前行的结构
-    const currentPos = stream.pos;
-    const comma1 = line.indexOf(",", currentPos);
-    const comma2 = comma1 !== -1 ? line.indexOf(",", comma1 + 1) : -1;
-
-    // 第一部分：规则类型 (keyword)
-    if (currentPos === 0 && comma1 !== -1) {
-      stream.pos = comma1;
-      return "keyword";
-    }
-
-    // 第一个逗号
-    if (stream.eat(",")) {
-      return "punctuation";
-    }
-
-    // 第二部分：内容 (string)
-    if (comma1 !== -1 && currentPos === comma1 + 1 && comma2 !== -1) {
-      stream.pos = comma2;
-      return "string";
-    }
-
-    // 第二个逗号
-    if (stream.eat(",")) {
-      return "punctuation";
-    }
-
-    // 第三部分：策略 (constant) - 使用真实策略数据
-    if (comma2 !== -1 && currentPos === comma2 + 1) {
-      const remaining = line.substring(comma2 + 1).trim();
-      if (remaining) {
-        // 检查是否是已知的策略
-        const policyPattern = new RegExp(`^(${policies.join("|")}|DIRECT|PROXY|REJECT|PASS)$`, "i");
-        if (policyPattern.test(remaining) || /^[A-Z][A-Z0-9_-]*$/.test(remaining)) {
-          stream.skipToEnd();
-          return "constant";
+      // 如果是行首，解析规则类型
+      if (stream.sol()) {
+        const match = stream.match(/^[A-Z][A-Z0-9-]*(?=,)/);
+        if (match) {
+          return "keyword";
         }
       }
-    }
 
-    // 策略名称匹配
-    const policyPattern = new RegExp(`^(${policies.join("|")}|DIRECT|PROXY|REJECT|PASS)$`, "i");
-    if (policyPattern.test(stream.current())) {
-      return "constant";
-    }
+      // 逗号
+      if (stream.eat(",")) {
+        return "punctuation";
+      }
 
-    // 其他内容作为字符串
-    if (stream.match(/^[a-zA-Z0-9._\-\/:]+/)) {
-      return "string";
-    }
+      // 策略名称（行尾的大写单词）
+      const policyMatch = stream.match(
+        new RegExp(`^(${policies.join("|")}|DIRECT|PROXY|REJECT|PASS)$`, "i"),
+      );
+      if (policyMatch) {
+        return "constant";
+      }
 
-    stream.next();
-    return null;
-  },
-  startState() {
-    return {};
-  },
-  copyState(state: any) {
-    return { ...state };
-  },
-});
+      // 自定义策略名称（大写字母开头的单词）
+      if (stream.match(/^[A-Z][A-Z0-9_-]*$/)) {
+        return "constant";
+      }
 
-// 动态 Clash 规则语法高亮样式，根据主题自动调整
-const clashHighlightStyle = HighlightStyle.define([
-  // 注释 - 使用 muted-foreground 色，斜体
-  {
-    tag: tags.comment,
-    color: "hsl(var(--muted-foreground))",
-    fontStyle: "italic",
-  },
+      // IP 地址和 CIDR
+      if (stream.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(\/\d{1,2})?/)) {
+        return "number";
+      }
 
-  // 规则类型关键字 - 使用 destructive 色，粗体
-  { tag: tags.keyword, color: "hsl(var(--destructive))", fontWeight: "bold" },
+      // 域名
+      if (
+        stream.match(
+          /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,
+        )
+      ) {
+        return "string";
+      }
 
-  // 字符串内容 - 使用 success 色
-  { tag: tags.string, color: "hsl(var(--success))" },
+      // 端口号
+      if (stream.match(/^\d{1,5}$/)) {
+        return "number";
+      }
 
-  // 常量值 - 使用 info 色，粗体
-  {
-    tag: tags.constant(tags.variableName),
-    color: "hsl(var(--info))",
-    fontWeight: "bold",
-  },
-  { tag: tags.literal, color: "hsl(var(--info))" },
-  { tag: tags.number, color: "hsl(var(--info))" },
+      // 其他内容
+      if (stream.match(/^[^\s,]+/)) {
+        return "string";
+      }
 
-  // 运算符和标点 - 使用 muted-foreground 色
-  { tag: tags.operator, color: "hsl(var(--muted-foreground))" },
-  { tag: tags.punctuation, color: "hsl(var(--muted-foreground))" },
+      stream.next();
+      return null;
+    },
+    startState() {
+      return {};
+    },
+    copyState(state: any) {
+      return { ...state };
+    },
+  });
 
-  // 变量名 - 使用 foreground 色
-  { tag: tags.variableName, color: "hsl(var(--foreground))" },
+  return new LanguageSupport(clashLanguage);
+};
 
-  // 类型名 - 使用 primary 色
-  { tag: tags.typeName, color: "hsl(var(--primary))" },
-  { tag: tags.className, color: "hsl(var(--primary))" },
+// 计算行号列宽度的函数
+const calculateLineNumberWidth = (lineCount: number) => {
+  const digits = Math.max(2, lineCount.toString().length);
+  // 每个数字大约 8px，加上左右 padding
+  return Math.max(32, digits * 8 + 16);
+};
 
-  // 函数名 - 使用 warning 色
-  { tag: tags.function(tags.variableName), color: "hsl(var(--warning))" },
+// 创建动态主题样式
+const createClashTheme = (isDark: boolean, lineCount: number = 1) => {
+  const lineNumberWidth = calculateLineNumberWidth(lineCount);
 
-  // 属性名 - 使用 muted-foreground 色
-  { tag: tags.propertyName, color: "hsl(var(--muted-foreground))" },
+  return EditorView.theme({
+    "&": {
+      color: isDark ? "#e2e8f0" : "#1e293b",
+      backgroundColor: isDark ? "#0f172a" : "#ffffff",
+    },
+    ".cm-content": {
+      padding: "16px",
+      caretColor: isDark ? "#3b82f6" : "#2563eb",
+      fontSize: "14px",
+      fontFamily: "var(--font-mono)",
+      lineHeight: "1.5",
+    },
+    ".cm-focused": {
+      outline: "none",
+    },
+    ".cm-editor.cm-focused": {
+      outline: "none",
+    },
+    ".cm-line": {
+      padding: "0 4px",
+    },
+    ".cm-gutters": {
+      backgroundColor: isDark ? "#1e293b" : "#f8fafc",
+      color: isDark ? "#64748b" : "#64748b",
+      border: "none",
+      borderRight: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`,
+    },
+    ".cm-gutter": {
+      minWidth: `${lineNumberWidth}px`,
+    },
+    ".cm-lineNumbers": {
+      minWidth: `${lineNumberWidth}px`,
+    },
+    ".cm-lineNumbers .cm-gutterElement": {
+      color: isDark ? "#64748b" : "#64748b",
+      fontSize: "12px",
+      fontFamily: "var(--font-mono)",
+      padding: "0 6px",
+      textAlign: "right",
+      minWidth: `${lineNumberWidth - 12}px`,
+    },
+    ".cm-activeLine": {
+      backgroundColor: isDark ? "#1e293b" : "#f1f5f9",
+    },
+    ".cm-activeLineGutter": {
+      backgroundColor: isDark ? "#334155" : "#e2e8f0",
+    },
+    ".cm-selectionBackground, ::selection": {
+      backgroundColor: isDark ? "#1e40af" : "#3b82f6",
+      color: "white",
+    },
+    ".cm-cursor": {
+      borderLeftColor: isDark ? "#3b82f6" : "#2563eb",
+    },
+    ".cm-searchMatch": {
+      backgroundColor: isDark ? "#fbbf24" : "#fcd34d",
+      color: isDark ? "#1f2937" : "#1f2937",
+    },
+    ".cm-searchMatch.cm-searchMatch-selected": {
+      backgroundColor: isDark ? "#f59e0b" : "#f59e0b",
+    },
+    ".cm-tooltip": {
+      backgroundColor: isDark ? "#1e293b" : "#ffffff",
+      border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`,
+      borderRadius: "6px",
+      boxShadow: isDark
+        ? "0 4px 6px -1px rgba(0, 0, 0, 0.3)"
+        : "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+    },
+    ".cm-tooltip-autocomplete": {
+      "& > ul": {
+        maxHeight: "200px",
+        overflowY: "auto",
+      },
+      "& > ul > li": {
+        padding: "6px 12px",
+        cursor: "pointer",
+        borderRadius: "4px",
+        margin: "2px",
+        color: isDark ? "#e2e8f0" : "#1e293b",
+        backgroundColor: "transparent",
+      },
+      "& > ul > li[aria-selected]": {
+        backgroundColor: isDark ? "#3b82f6" : "#3b82f6",
+        color: "#ffffff",
+        fontWeight: "500",
+      },
+      "& > ul > li:hover": {
+        backgroundColor: isDark ? "#475569" : "#f1f5f9",
+      },
+    },
+  }, { dark: isDark });
+};
 
-  // 定义 - 使用 foreground 色，粗体
-  {
-    tag: tags.definition(tags.variableName),
-    color: "hsl(var(--foreground))",
-    fontWeight: "bold",
-  },
-]);
+// 动态 Clash 规则语法高亮样式
+const createClashHighlightStyle = (isDark: boolean) =>
+  HighlightStyle.define([
+    // 注释 - 灰色，斜体
+    {
+      tag: tags.comment,
+      color: isDark ? "#64748b" : "#64748b",
+      fontStyle: "italic",
+    },
+    // 规则类型关键字 - 蓝色，粗体
+    {
+      tag: tags.keyword,
+      color: isDark ? "#60a5fa" : "#2563eb",
+      fontWeight: "bold",
+    },
+    // 字符串内容 - 绿色
+    {
+      tag: tags.string,
+      color: isDark ? "#34d399" : "#059669",
+    },
+    // 数字 - 橙色
+    {
+      tag: tags.number,
+      color: isDark ? "#fb923c" : "#ea580c",
+    },
+    // 常量值（策略名称）- 紫色，粗体
+    {
+      tag: tags.constant(tags.name),
+      color: isDark ? "#a78bfa" : "#7c3aed",
+      fontWeight: "bold",
+    },
+    // 运算符和标点 - 灰色
+    {
+      tag: tags.operator,
+      color: isDark ? "#94a3b8" : "#64748b",
+    },
+    {
+      tag: tags.punctuation,
+      color: isDark ? "#94a3b8" : "#64748b",
+    },
+  ]);
 
 // 动态语法高亮器，适配当前主题
 
@@ -180,8 +286,17 @@ const createClashLinter = (
   policies: string[],
   geoIPCountries: string[],
   networkTypes: string[],
-) =>
-  linter((view) => {
+  currentGeoIPCountries: string[] = [],
+  currentNetworkTypes: string[] = [],
+) => {
+  // 获取真实数据源
+  const dataSources = ClashDataSources;
+  const realPolicies = dataSources.getPolicies();
+  const realCountries = dataSources.getGeoIPCountries();
+  const realNetworkTypes = dataSources.getNetworkTypes();
+  const commonProcesses = dataSources.getCommonProcesses();
+
+  return linter((view) => {
     const diagnostics: Diagnostic[] = [];
     const text = view.state.doc.toString();
     const lines = text.split("\n");
@@ -203,35 +318,9 @@ const createClashLinter = (
       }
 
       const [ruleType, content, policy] = parts.map((p) => p.trim());
-      const validRuleTypes = [
-        "DOMAIN",
-        "DOMAIN-SUFFIX",
-        "DOMAIN-KEYWORD",
-        "DOMAIN-REGEX",
-        "IP-CIDR",
-        "IP-CIDR6",
-        "IP-ASN",
-        "GEOIP",
-        "GEOSITE",
-        "PROCESS-NAME",
-        "PROCESS-PATH",
-        "PROCESS-PATH-REGEX",
-        "DST-PORT",
-        "SRC-PORT",
-        "IN-PORT",
-        "SRC-IP-CIDR",
-        "AND",
-        "OR",
-        "NOT",
-        "RULE-SET",
-        "SUB-RULE",
-        "NETWORK",
-        "UID",
-        "IN-TYPE",
-        "MATCH",
-      ];
 
-      if (!validRuleTypes.includes(ruleType)) {
+      // 验证规则类型
+      if (!CLASH_RULE_TYPES.includes(ruleType)) {
         diagnostics.push({
           from: view.state.doc.line(index + 1).from + line.indexOf(ruleType),
           to: view.state.doc.line(index + 1).from + line.indexOf(ruleType) +
@@ -242,15 +331,13 @@ const createClashLinter = (
         });
       }
 
+      // 验证策略名称
       if (policy) {
-        const validPolicies = [
-          "DIRECT",
-          "PROXY",
-          "REJECT",
-          "PASS",
+        const allValidPolicies = [
+          ...realPolicies.map((p) => p.name),
           ...policies,
         ];
-        const isValidPolicy = validPolicies.includes(policy) ||
+        const isValidPolicy = allValidPolicies.includes(policy) ||
           policy.match(/^[A-Z][A-Z0-9_-]*$/);
 
         if (!isValidPolicy) {
@@ -270,28 +357,61 @@ const createClashLinter = (
       if (ruleType && content) {
         switch (ruleType) {
           case "GEOIP":
-            if (!geoIPCountries.includes(content.toUpperCase())) {
+            // 使用当前环境的真实数据进行验证
+            const allValidCountryCodes = Array.from(
+              new Set([
+                ...realCountries.map((c) => c.code),
+                ...geoIPCountries,
+                ...currentGeoIPCountries,
+              ]),
+            );
+            if (!allValidCountryCodes.includes(content.toUpperCase())) {
               diagnostics.push({
                 from: view.state.doc.line(index + 1).from +
                   line.indexOf(content),
                 to: view.state.doc.line(index + 1).from +
                   line.indexOf(content) + content.length,
                 severity: "warning",
-                message: `未知的国家代码：${content}，建议使用标准国家代码`,
+                message:
+                  `未知的国家代码：${content}，建议使用标准国家代码或在测试区域添加自定义代码`,
                 source: "clash-rule-linter",
               });
             }
             break;
 
           case "NETWORK":
-            if (!networkTypes.includes(content.toUpperCase())) {
+            // 使用当前环境的真实数据进行验证
+            const allValidNetworkTypes = Array.from(
+              new Set([
+                ...realNetworkTypes.map((n) => n.type),
+                ...networkTypes,
+                ...currentNetworkTypes,
+              ]),
+            );
+            if (!allValidNetworkTypes.includes(content.toUpperCase())) {
               diagnostics.push({
                 from: view.state.doc.line(index + 1).from +
                   line.indexOf(content),
                 to: view.state.doc.line(index + 1).from +
                   line.indexOf(content) + content.length,
                 severity: "warning",
-                message: `未知的网络类型：${content}`,
+                message:
+                  `未知的网络类型：${content}，建议使用标准网络类型或在测试区域添加自定义类型`,
+                source: "clash-rule-linter",
+              });
+            }
+            break;
+
+          case "PROCESS-NAME":
+            // 检查是否是常见进程名
+            if (!commonProcesses.includes(content) && !content.includes(".")) {
+              diagnostics.push({
+                from: view.state.doc.line(index + 1).from +
+                  line.indexOf(content),
+                to: view.state.doc.line(index + 1).from +
+                  line.indexOf(content) + content.length,
+                severity: "info",
+                message: `进程名 ${content} 不在常见进程列表中，请确认是否正确`,
                 source: "clash-rule-linter",
               });
             }
@@ -309,6 +429,21 @@ const createClashLinter = (
                 message: `无效的 IPv4 CIDR 格式：${content}`,
                 source: "clash-rule-linter",
               });
+            } else {
+              // 验证 IP 地址范围
+              const [ip, prefix] = content.split("/");
+              const prefixNum = parseInt(prefix);
+              if (prefixNum < 0 || prefixNum > 32) {
+                diagnostics.push({
+                  from: view.state.doc.line(index + 1).from +
+                    line.indexOf(content),
+                  to: view.state.doc.line(index + 1).from +
+                    line.indexOf(content) + content.length,
+                  severity: "error",
+                  message: `IPv4 CIDR 前缀长度必须在 0-32 之间：${content}`,
+                  source: "clash-rule-linter",
+                });
+              }
             }
             break;
 
@@ -324,6 +459,21 @@ const createClashLinter = (
                 message: `无效的 IPv6 CIDR 格式：${content}`,
                 source: "clash-rule-linter",
               });
+            } else {
+              // 验证 IPv6 前缀长度
+              const [, prefix] = content.split("/");
+              const prefixNum = parseInt(prefix);
+              if (prefixNum < 0 || prefixNum > 128) {
+                diagnostics.push({
+                  from: view.state.doc.line(index + 1).from +
+                    line.indexOf(content),
+                  to: view.state.doc.line(index + 1).from +
+                    line.indexOf(content) + content.length,
+                  severity: "error",
+                  message: `IPv6 CIDR 前缀长度必须在 0-128 之间：${content}`,
+                  source: "clash-rule-linter",
+                });
+              }
             }
             break;
 
@@ -346,7 +496,7 @@ const createClashLinter = (
             break;
 
           case "DOMAIN":
-            // 简单的域名格式验证
+            // 增强的域名格式验证
             const domainRegex =
               /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
             if (!domainRegex.test(content)) {
@@ -361,12 +511,30 @@ const createClashLinter = (
               });
             }
             break;
+
+          case "DOMAIN-REGEX":
+            // 验证正则表达式语法
+            try {
+              new RegExp(content);
+            } catch (e) {
+              diagnostics.push({
+                from: view.state.doc.line(index + 1).from +
+                  line.indexOf(content),
+                to: view.state.doc.line(index + 1).from +
+                  line.indexOf(content) + content.length,
+                severity: "error",
+                message: `无效的正则表达式：${content}`,
+                source: "clash-rule-linter",
+              });
+            }
+            break;
         }
       }
     });
 
     return diagnostics;
   });
+};
 
 interface ClashRuleEditorProps {
   value: string;
@@ -379,6 +547,9 @@ interface ClashRuleEditorProps {
   policies?: string[];
   geoIPCountries?: string[];
   networkTypes?: string[];
+  // 当前环境的真实数据
+  currentGeoIPCountries?: string[];
+  currentNetworkTypes?: string[];
 }
 
 const CLASH_RULE_TYPES = [
@@ -422,8 +593,19 @@ const createClashCompletion = (
   policies: string[],
   geoIPCountries: string[],
   networkTypes: string[],
-) =>
-  autocompletion({
+  currentGeoIPCountries: string[] = [],
+  currentNetworkTypes: string[] = [],
+) => {
+  // 获取真实数据源
+  const dataSources = ClashDataSources;
+  const realPolicies = dataSources.getPolicies();
+  const realCountries = dataSources.getGeoIPCountries();
+  const realNetworkTypes = dataSources.getNetworkTypes();
+  const commonPorts = dataSources.getCommonPorts();
+  const commonProcesses = dataSources.getCommonProcesses();
+  const domainSuffixes = dataSources.getCommonDomainSuffixes();
+
+  return autocompletion({
     override: [
       (context) => {
         const word = context.matchBefore(/\w*/);
@@ -431,33 +613,97 @@ const createClashCompletion = (
 
         const completions = [
           // 规则类型
-          ...CLASH_RULE_TYPES.map((type) => ({ label: type, type: "keyword" })),
-          // 策略 - 从真实环境获取
-          ...policies.map((policy) => ({ label: policy, type: "constant" })),
-          // GeoIP 国家代码 - 从真实环境获取
-          ...geoIPCountries.map((country) => ({
-            label: country,
-            type: "constant",
+          ...CLASH_RULE_TYPES.map((type) => ({
+            label: type,
+            type: "keyword",
+            detail: "规则类型",
           })),
-          // 网络类型 - 从真实环境获取
-          ...networkTypes.map((network) => ({
-            label: network,
+
+          // 策略 - 合并用户自定义和内置策略
+          ...realPolicies.map((policy) => ({
+            label: policy.name,
             type: "constant",
+            detail: policy.description,
           })),
-          // 常见域名后缀
-          { label: "google.com", type: "text" },
-          { label: "github.com", type: "text" },
-          { label: "youtube.com", type: "text" },
-          { label: "facebook.com", type: "text" },
-          { label: "twitter.com", type: "text" },
+          ...policies.filter((p) => !realPolicies.some((rp) => rp.name === p))
+            .map((policy) => ({
+              label: policy,
+              type: "constant",
+              detail: "自定义策略",
+            })),
+
+          // GeoIP 国家代码 - 使用当前环境的真实数据
+          ...Array.from(new Set([...geoIPCountries, ...currentGeoIPCountries]))
+            .map((country) => {
+              const realCountry = realCountries.find((c) => c.code === country);
+              return {
+                label: country,
+                type: "constant",
+                detail: realCountry
+                  ? `${realCountry.name} (${realCountry.continent})`
+                  : "自定义国家代码",
+              };
+            }),
+
+          // 网络类型 - 使用当前环境的真实数据
+          ...Array.from(new Set([...networkTypes, ...currentNetworkTypes])).map(
+            (network) => {
+              const realNetwork = realNetworkTypes.find((n) =>
+                n.type === network
+              );
+              return {
+                label: network,
+                type: "constant",
+                detail: realNetwork
+                  ? realNetwork.description
+                  : "自定义网络类型",
+              };
+            },
+          ),
+
           // 常见端口
-          { label: "80", type: "number" },
-          { label: "443", type: "number" },
-          { label: "8080", type: "number" },
+          ...commonPorts.map((port) => ({
+            label: port.port.toString(),
+            type: "number",
+            detail: `${port.description} (${port.category})`,
+          })),
+
           // 常见进程名
-          { label: "chrome.exe", type: "text" },
-          { label: "firefox.exe", type: "text" },
-          { label: "system", type: "text" },
+          ...commonProcesses.map((process) => ({
+            label: process,
+            type: "text",
+            detail: "常见进程",
+          })),
+
+          // 常见域名后缀
+          ...domainSuffixes.map((suffix) => ({
+            label: `example.${suffix}`,
+            type: "text",
+            detail: `域名示例 (.${suffix})`,
+          })),
+
+          // 常见域名
+          { label: "google.com", type: "text", detail: "Google 搜索" },
+          { label: "github.com", type: "text", detail: "GitHub 代码托管" },
+          { label: "youtube.com", type: "text", detail: "YouTube 视频" },
+          { label: "facebook.com", type: "text", detail: "Facebook 社交" },
+          { label: "twitter.com", type: "text", detail: "Twitter 社交" },
+          { label: "instagram.com", type: "text", detail: "Instagram 图片" },
+          { label: "linkedin.com", type: "text", detail: "LinkedIn 职场" },
+          { label: "reddit.com", type: "text", detail: "Reddit 论坛" },
+          {
+            label: "stackoverflow.com",
+            type: "text",
+            detail: "Stack Overflow 问答",
+          },
+          { label: "wikipedia.org", type: "text", detail: "维基百科" },
+
+          // IP 地址示例
+          { label: "192.168.1.0/24", type: "text", detail: "私有网络 CIDR" },
+          { label: "10.0.0.0/8", type: "text", detail: "私有网络 CIDR" },
+          { label: "172.16.0.0/12", type: "text", detail: "私有网络 CIDR" },
+          { label: "8.8.8.8", type: "text", detail: "Google DNS" },
+          { label: "1.1.1.1", type: "text", detail: "Cloudflare DNS" },
         ];
 
         return {
@@ -469,39 +715,59 @@ const createClashCompletion = (
       },
     ],
   });
+};
 
-// 行高亮装饰器 - 高亮整行
-const lineHighlight = (lineNumber: number) => {
-  return EditorView.decorations.of((view: EditorView) => {
-    const builder = new RangeSetBuilder<Decoration>();
-    const state = view.state;
-    const doc = state.doc;
+// 行高亮状态字段
+const lineHighlightField = StateField.define<DecorationSet>({
+  create() {
+    return Decoration.none;
+  },
+  update(decorations, tr) {
+    decorations = decorations.map(tr.changes);
 
-    if (lineNumber && lineNumber <= doc.lines && lineNumber > 0) {
-      try {
-        const line = doc.line(lineNumber);
-        if (line && line.text !== undefined) {
-          // 高亮整行，但不包括换行符
-          const lineEnd = line.to - (line.number === doc.lines ? 0 : 1);
-          builder.add(
-            line.from,
-            lineEnd,
-            Decoration.mark({
-              class: "bg-blue-100 dark:bg-blue-900/50",
-              attributes: {
-                style:
-                  "background-color: rgba(59, 130, 246, 0.2); padding: 2px 0;",
-              },
-            }),
-          );
+    // 检查是否有行高亮效果
+    for (const effect of tr.effects) {
+      if (effect.is(lineHighlightEffect)) {
+        const { lineNumber, isDark } = effect.value;
+        const builder = new RangeSetBuilder<Decoration>();
+
+        if (lineNumber && lineNumber > 0 && lineNumber <= tr.state.doc.lines) {
+          try {
+            const line = tr.state.doc.line(lineNumber);
+            if (line) {
+              const decoration = Decoration.line({
+                attributes: {
+                  style: `background-color: ${
+                    isDark
+                      ? "rgba(59, 130, 246, 0.2)"
+                      : "rgba(59, 130, 246, 0.15)"
+                  }; border-left: 3px solid ${isDark ? "#3b82f6" : "#2563eb"};`,
+                },
+              });
+              builder.add(line.from, line.from, decoration);
+            }
+          } catch (error) {
+            console.warn("Line highlight error:", error);
+          }
         }
-      } catch (error) {
-        console.warn("Line highlight error:", error);
+
+        return builder.finish();
       }
     }
 
-    return builder.finish();
-  });
+    return decorations;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+// 行高亮效果
+const lineHighlightEffect = StateEffect.define<
+  { lineNumber: number; isDark: boolean }
+>();
+
+// 创建行高亮扩展
+const createLineHighlightExtension = () => {
+  return [lineHighlightField];
 };
 
 export function ClashRuleEditor({
@@ -515,6 +781,8 @@ export function ClashRuleEditor({
   policies = CLASH_POLICIES,
   geoIPCountries = [],
   networkTypes = [],
+  currentGeoIPCountries = [],
+  currentNetworkTypes = [],
 }: ClashRuleEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -523,6 +791,8 @@ export function ClashRuleEditor({
   const [history, setHistory] = useState<string[]>([value]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const { toast } = useToast();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
   useEffect(() => {
     const lines = value.split("\n").length;
@@ -537,28 +807,58 @@ export function ClashRuleEditor({
     }
   }, [value]);
 
-  // 初始化 CodeMirror 编辑器
+  // 初始化 CodeMirror 编辑器 - 只在组件挂载时创建一次
   useEffect(() => {
-    if (editorRef.current) {
+    if (editorRef.current && !editorViewRef.current) {
+      const extensions = [
+        basicSetup,
+        createClashLanguage(policies),
+        syntaxHighlighting(createClashHighlightStyle(isDark)),
+        createClashTheme(isDark, lineCount),
+        keymap.of([indentWithTab, ...defaultKeymap]),
+        createClashCompletion(
+          policies,
+          geoIPCountries,
+          networkTypes,
+          currentGeoIPCountries,
+          currentNetworkTypes,
+        ),
+        createClashLinter(
+          policies,
+          geoIPCountries,
+          networkTypes,
+          currentGeoIPCountries,
+          currentNetworkTypes,
+        ),
+        lintGutter(),
+        createLineHighlightExtension(),
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged) {
+            const newValue = update.state.doc.toString();
+            onChange(newValue);
+            saveToHistory(newValue);
+          }
+        }),
+        // 设置编辑器高度和滚动 - 适应新的布局
+        EditorView.theme({
+          ".cm-editor": {
+            height: "100%",
+            maxHeight: "none",
+          },
+          ".cm-scroller": {
+            overflow: "auto",
+            height: "100%",
+          },
+          ".cm-content": {
+            minHeight: "100%",
+            padding: "16px",
+          },
+        }),
+      ];
+
       const state = EditorState.create({
         doc: value,
-        extensions: [
-          basicSetup,
-          createClashLanguage(policies),
-          syntaxHighlighting(clashHighlightStyle),
-          keymap.of([indentWithTab, ...defaultKeymap]),
-          createClashCompletion(policies, geoIPCountries, networkTypes),
-          createClashLinter(policies, geoIPCountries, networkTypes),
-          lintGutter(),
-          dynamicDecorations,
-          EditorView.updateListener.of((update) => {
-            if (update.docChanged) {
-              const newValue = update.state.doc.toString();
-              onChange(newValue);
-              saveToHistory(newValue);
-            }
-          }),
-        ],
+        extensions,
       });
 
       const view = new EditorView({
@@ -569,11 +869,72 @@ export function ClashRuleEditor({
       editorViewRef.current = view;
 
       return () => {
-        view.destroy();
-        editorViewRef.current = null;
+        if (editorViewRef.current) {
+          editorViewRef.current.destroy();
+          editorViewRef.current = null;
+        }
       };
     }
-  }, [highlightedLine, policies, geoIPCountries, networkTypes]);
+  }, []); // 空依赖数组，只在组件挂载时执行一次
+
+  // 单独处理主题变化
+  useEffect(() => {
+    if (editorViewRef.current) {
+      const newTheme = createClashTheme(isDark, lineCount);
+      const newHighlightStyle = syntaxHighlighting(
+        createClashHighlightStyle(isDark),
+      );
+
+      editorViewRef.current.dispatch({
+        effects: [
+          StateEffect.reconfigure.of([
+            basicSetup,
+            createClashLanguage(policies),
+            newHighlightStyle,
+            newTheme,
+            keymap.of([indentWithTab, ...defaultKeymap]),
+            createClashCompletion(policies, geoIPCountries, networkTypes),
+            createClashLinter(policies, geoIPCountries, networkTypes),
+            lintGutter(),
+            createLineHighlightExtension(),
+            EditorView.updateListener.of((update) => {
+              if (update.docChanged) {
+                const newValue = update.state.doc.toString();
+                onChange(newValue);
+                saveToHistory(newValue);
+              }
+            }),
+            EditorView.theme({
+              ".cm-editor": {
+                height: "100%",
+                maxHeight: "none",
+              },
+              ".cm-scroller": {
+                overflow: "auto",
+                height: "100%",
+              },
+              ".cm-content": {
+                minHeight: "100%",
+                padding: "16px",
+              },
+            }),
+          ]),
+        ],
+      });
+    }
+  }, [isDark, policies, geoIPCountries, networkTypes, lineCount]);
+
+  // 处理行高亮变化
+  useEffect(() => {
+    if (editorViewRef.current && highlightedLine) {
+      editorViewRef.current.dispatch({
+        effects: lineHighlightEffect.of({
+          lineNumber: highlightedLine,
+          isDark: isDark,
+        }),
+      });
+    }
+  }, [highlightedLine, isDark]);
 
   // 更新编辑器内容
   useEffect(() => {
@@ -590,247 +951,6 @@ export function ClashRuleEditor({
       }
     }
   }, [value]);
-
-  // 创建动态装饰器
-  const dynamicDecorations = useMemo(() => {
-    return highlightedLine
-      ? lineHighlight(highlightedLine)
-      : EditorView.decorations.of(() => Decoration.none);
-  }, [highlightedLine]);
-
-  const highlightSyntax = (text: string, isEditingMode: boolean = false) => {
-    const lines = text.split("\n");
-    return lines.map((line, index) => {
-      const lineNumber = index + 1;
-      // 只在非编辑模式下应用高亮
-      const isHighlighted = !isEditingMode && highlightedLine === lineNumber;
-      const trimmedLine = line.trim();
-
-      // Skip empty lines
-      if (!trimmedLine) {
-        return (
-          <div
-            key={index}
-            className={cn(
-              "flex min-h-[24px] hover:bg-accent/5 transition-colors duration-150 group",
-              isHighlighted &&
-                "bg-blue-50 dark:bg-blue-950/30 border-l-2 border-blue-500",
-            )}
-          >
-            <span className="w-12 px-2 text-right text-xs text-muted-foreground select-none font-mono">
-              {lineNumber}
-            </span>
-            <span className="flex-1 px-2">&nbsp;</span>
-          </div>
-        );
-      }
-
-      // Comment lines
-      if (trimmedLine.startsWith("#")) {
-        return (
-          <div
-            key={index}
-            className={cn(
-              "flex min-h-[24px] hover:bg-accent/5 transition-colors duration-150 group",
-              isHighlighted &&
-                "bg-blue-50 dark:bg-blue-950/30 border-l-2 border-blue-500",
-            )}
-          >
-            <span className="w-12 px-2 text-right text-xs text-muted-foreground select-none font-mono">
-              {lineNumber}
-            </span>
-            <span
-              className={cn(
-                "flex-1 px-2 font-mono text-sm italic opacity-75",
-                // 在编辑模式下使文本透明
-                isEditingMode
-                  ? "text-transparent"
-                  : "text-green-600 dark:text-green-400",
-              )}
-            >
-              {line}
-            </span>
-          </div>
-        );
-      }
-
-      // Parse rule line
-      const parts = line.split(",");
-      if (parts.length >= 2) {
-        const [ruleType, content, ...rest] = parts.map((p) => p.trim());
-        const policy = rest.join(",").trim();
-
-        const isValidRuleType = CLASH_RULE_TYPES.includes(ruleType);
-        const isValidPolicy = !policy || CLASH_POLICIES.includes(policy) ||
-          policy.match(/^[A-Z][A-Z0-9_-]*$/);
-        const hasError = !isValidRuleType || !isValidPolicy;
-
-        return (
-          <div
-            key={index}
-            className={cn(
-              "flex min-h-[24px] hover:bg-accent/5 transition-colors duration-150 group",
-              isHighlighted &&
-                "bg-blue-50 dark:bg-blue-950/30 border-l-2 border-blue-500",
-              hasError && "bg-red-50/50 dark:bg-red-950/20",
-            )}
-          >
-            <span className="w-12 px-2 text-right text-xs text-muted-foreground select-none font-mono">
-              {lineNumber}
-            </span>
-            <span className="flex-1 px-2 font-mono text-sm">
-              <span
-                className={cn(
-                  "font-semibold",
-                  // 在编辑模式下使文本透明
-                  isEditingMode
-                    ? "text-transparent"
-                    : (isValidRuleType
-                      ? getRuleTypeColor(ruleType)
-                      : "text-red-600 dark:text-red-400"),
-                )}
-              >
-                {ruleType}
-              </span>
-              <span
-                className={cn(
-                  "text-muted-foreground/70",
-                  isEditingMode && "text-transparent",
-                )}
-              >
-                ,
-              </span>
-              <span
-                className={cn(
-                  "mx-1",
-                  isEditingMode ? "text-transparent" : "text-foreground/90",
-                )}
-              >
-                {content}
-              </span>
-              {policy && (
-                <>
-                  <span
-                    className={cn(
-                      "text-muted-foreground/70",
-                      isEditingMode && "text-transparent",
-                    )}
-                  >
-                    ,
-                  </span>
-                  <span
-                    className={cn(
-                      "font-medium ml-1",
-                      isEditingMode
-                        ? "text-transparent"
-                        : (isValidPolicy
-                          ? getPolicyColor(policy)
-                          : "text-red-600 dark:text-red-400"),
-                    )}
-                  >
-                    {policy}
-                  </span>
-                </>
-              )}
-              {hasError && !isEditingMode && (
-                <span className="ml-2 text-xs text-red-500 dark:text-red-400 opacity-75">
-                  ⚠ {!isValidRuleType && "Invalid rule type"}
-                  {!isValidRuleType && !isValidPolicy && " • "}
-                  {!isValidPolicy && "Invalid policy"}
-                </span>
-              )}
-            </span>
-          </div>
-        );
-      }
-
-      // Invalid or incomplete rule
-      return (
-        <div
-          key={index}
-          className={cn(
-            "flex min-h-[24px] hover:bg-accent/5 transition-colors duration-150 group",
-            isHighlighted &&
-              "bg-blue-50 dark:bg-blue-950/30 border-l-2 border-blue-500",
-            trimmedLine && "bg-amber-50/50 dark:bg-amber-950/20",
-          )}
-        >
-          <span className="w-12 px-2 text-right text-xs text-muted-foreground select-none font-mono">
-            {lineNumber}
-          </span>
-          <span
-            className={cn(
-              "flex-1 px-2 font-mono text-sm",
-              isEditingMode
-                ? "text-transparent"
-                : "text-amber-700 dark:text-amber-300",
-            )}
-          >
-            {line}
-          </span>
-          {trimmedLine && !isEditingMode && (
-            <span className="text-xs text-amber-600 dark:text-amber-400 px-2 self-center opacity-75">
-              ⚠ Incomplete
-            </span>
-          )}
-        </div>
-      );
-    });
-  };
-
-  const getRuleTypeColor = (ruleType: string): string => {
-    if (
-      ["DOMAIN", "DOMAIN-SUFFIX", "DOMAIN-KEYWORD", "DOMAIN-REGEX", "GEOSITE"]
-        .includes(ruleType)
-    ) {
-      return "text-blue-600 dark:text-blue-400";
-    }
-    if (
-      ["IP-CIDR", "IP-CIDR6", "IP-ASN", "GEOIP", "SRC-IP-CIDR"].includes(
-        ruleType,
-      )
-    ) {
-      return "text-purple-600 dark:text-purple-400";
-    }
-    if (
-      ["PROCESS-NAME", "PROCESS-PATH", "PROCESS-PATH-REGEX"].includes(ruleType)
-    ) {
-      return "text-emerald-600 dark:text-emerald-400";
-    }
-    if (["DST-PORT", "SRC-PORT", "IN-PORT"].includes(ruleType)) {
-      return "text-orange-600 dark:text-orange-400";
-    }
-    if (["AND", "OR", "NOT"].includes(ruleType)) {
-      return "text-indigo-600 dark:text-indigo-400 font-bold";
-    }
-    if (["RULE-SET", "SUB-RULE"].includes(ruleType)) {
-      return "text-cyan-600 dark:text-cyan-400";
-    }
-    if (ruleType === "MATCH") {
-      return "text-gray-600 dark:text-gray-400 font-bold";
-    }
-    return "text-slate-600 dark:text-slate-400";
-  };
-
-  const getPolicyColor = (policy: string): string => {
-    switch (policy) {
-      case "DIRECT":
-        return "text-green-600 dark:text-green-400";
-      case "PROXY":
-        return "text-blue-600 dark:text-blue-400";
-      case "REJECT":
-        return "text-red-600 dark:text-red-400";
-      case "PASS":
-        return "text-yellow-600 dark:text-yellow-400";
-      default:
-        return "text-indigo-600 dark:text-indigo-400";
-    }
-  };
-
-  // CodeMirror 处理键盘事件，不需要额外的处理
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    // CodeMirror 会处理键盘事件
-  };
 
   // 撤销功能
   const undo = () => {

@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Toggle } from "@/components/ui/toggle";
 import { Slider } from "@/components/ui/slider";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertTriangle,
   CheckCircle,
@@ -55,6 +56,7 @@ import { SettingsDialog } from "@/components/settings-dialog";
 import { HelpDialog } from "@/components/help-dialog";
 import { AIService } from "@/lib/ai-service";
 import { useToast } from "@/hooks/use-toast";
+import { ClashDataSources } from "@/lib/clash-data-sources";
 
 const SAMPLE_RULES = `# CLASH Rules Configuration
 # Domain rules
@@ -125,40 +127,37 @@ export default function ClashRuleTester() {
   const [testNetwork, setTestNetwork] = useState("TCP");
   const [testUID, setTestUID] = useState("1000");
 
-  // 网络类型管理
-  const [networkTypes, setNetworkTypes] = useState([
-    "TCP",
-    "UDP",
-    "ICMP",
-    "HTTP",
-    "HTTPS",
-    "SOCKS",
-    "TUN",
-  ]);
+  // 网络类型管理 - 使用真实数据源
+  const [networkTypes, setNetworkTypes] = useState(() =>
+    ClashDataSources.getNetworkTypes().map((n) => n.type)
+  );
   const [newNetworkType, setNewNetworkType] = useState("");
 
   // IP 类型选择
   const [srcIPType, setSrcIPType] = useState<"ipv4" | "ipv6" | "both">("both");
   const [dstIPType, setDstIPType] = useState<"ipv4" | "ipv6" | "both">("both");
 
+  // 测试项目启用状态
+  const [enabledTestItems, setEnabledTestItems] = useState({
+    domain: true,
+    srcIP: false,
+    srcPort: false,
+    dstIP: true,
+    dstPort: true,
+    process: false,
+    processPath: false,
+    geoIP: true,
+    network: true,
+    uid: false,
+  });
+
   // 匹配结果面板展开状态
   const [matchResultExpanded, setMatchResultExpanded] = useState(true);
 
-  // GeoIP 国家代码管理
-  const [geoIPCountries, setGeoIPCountries] = useState([
-    "US",
-    "CN",
-    "JP",
-    "KR",
-    "SG",
-    "HK",
-    "TW",
-    "GB",
-    "DE",
-    "FR",
-    "CA",
-    "AU",
-  ]);
+  // GeoIP 国家代码管理 - 使用真实数据源
+  const [geoIPCountries, setGeoIPCountries] = useState(() =>
+    ClashDataSources.getGeoIPCountries(true).map((c) => c.code)
+  );
   const [newCountryCode, setNewCountryCode] = useState("");
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
   const [newRuleType, setNewRuleType] = useState("");
@@ -187,11 +186,13 @@ export default function ClashRuleTester() {
   });
   const [isTestingInProgress, setIsTestingInProgress] = useState(false);
 
-  const [policies, setPolicies] = useState<Policy[]>([
-    { id: "1", name: "DIRECT", comment: "直连，不使用代理" },
-    { id: "2", name: "PROXY", comment: "使用代理服务器" },
-    { id: "3", name: "REJECT", comment: "拒绝连接" },
-  ]);
+  const [policies, setPolicies] = useState<Policy[]>(() =>
+    ClashDataSources.getPolicies().map((p, index) => ({
+      id: (index + 1).toString(),
+      name: p.name,
+      comment: p.description,
+    }))
+  );
   const [newPolicyName, setNewPolicyName] = useState("");
   const [newPolicyComment, setNewPolicyComment] = useState("");
   const [editingPolicy, setEditingPolicy] = useState<string | null>(null);
@@ -262,18 +263,18 @@ export default function ClashRuleTester() {
     setIsTestingInProgress(true);
 
     const testRequest: TestRequest = {
-      domain: testDomain,
-      process: testProcess,
-      processPath: testProcessPath,
-      network: testNetwork,
-      uid: testUID,
-      srcIPv4: testSrcIPv4,
-      srcIPv6: testSrcIPv6,
-      srcPort: testSrcPort,
-      dstIPv4: testDstIPv4,
-      dstIPv6: testDstIPv6,
-      dstPort: testDstPort,
-      geoIP: testGeoIP,
+      domain: enabledTestItems.domain ? testDomain : undefined,
+      process: enabledTestItems.process ? testProcess : undefined,
+      processPath: enabledTestItems.processPath ? testProcessPath : undefined,
+      network: enabledTestItems.network ? testNetwork : undefined,
+      uid: enabledTestItems.uid ? testUID : undefined,
+      srcIPv4: enabledTestItems.srcIP ? testSrcIPv4 : undefined,
+      srcIPv6: enabledTestItems.srcIP ? testSrcIPv6 : undefined,
+      srcPort: enabledTestItems.srcPort ? testSrcPort : undefined,
+      dstIPv4: enabledTestItems.dstIP ? testDstIPv4 : undefined,
+      dstIPv6: enabledTestItems.dstIP ? testDstIPv6 : undefined,
+      dstPort: enabledTestItems.dstPort ? testDstPort : undefined,
+      geoIP: enabledTestItems.geoIP ? testGeoIP : undefined,
     };
 
     const result = ruleEngine.testRequest(testRequest);
@@ -532,35 +533,35 @@ export default function ClashRuleTester() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card/30 backdrop-blur-sm sticky top-0 z-50">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">
+        <div className="flex items-center justify-between px-4 py-2">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-xs">
                 C
               </span>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">
+              <h1 className="text-lg font-bold text-foreground leading-tight">
                 CLASH 规则测试器
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground leading-tight">
                 专业的规则引擎测试工具
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <HelpDialog />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  size="icon"
-                  className="hover:bg-accent/80 transition-colors bg-transparent"
+                  size="sm"
+                  className="hover:bg-accent/80 transition-colors bg-transparent h-8 w-8 p-0"
                 >
-                  <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                  <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                  <Sun className="h-3 w-3 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                  <Moon className="absolute h-3 w-3 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                   <span className="sr-only">切换主题</span>
                 </Button>
               </DropdownMenuTrigger>
@@ -585,7 +586,7 @@ export default function ClashRuleTester() {
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-80px)]">
+      <div className="flex h-[calc(100vh-56px)]">
         {/* Left Column: Quick Rule Builder & Policy Management */}
         <div className="w-80 border-r border-border bg-sidebar/30 overflow-y-auto custom-scrollbar">
           <div className="p-4 space-y-4">
@@ -773,9 +774,16 @@ export default function ClashRuleTester() {
           </div>
         </div>
 
-        {/* Middle Column: Rule Editor */}
-        <div className="flex-1 flex flex-col max-h-[calc(100vh-200px)]">
-          <div className="flex-1 bg-card  justify-around">
+        {/* Middle Column: Rule Editor with VSCode-like layout */}
+        <div className="flex-1 flex flex-col h-full">
+          {/* Editor Area - dynamic height based on bottom panel state */}
+          <div
+            className={`bg-card overflow-hidden transition-all duration-300 ${
+              matchResultExpanded
+                ? "h-[calc(100%-12rem)]"
+                : "h-[calc(100%-3rem)]"
+            }`}
+          >
             <ClashRuleEditor
               value={rules}
               onChange={setRules}
@@ -787,77 +795,89 @@ export default function ClashRuleTester() {
               policies={policies.map((p) => p.name)}
               geoIPCountries={geoIPCountries}
               networkTypes={networkTypes}
+              currentGeoIPCountries={geoIPCountries}
+              currentNetworkTypes={networkTypes}
             />
           </div>
 
-          {/* Expandable Match Result Panel */}
-          {true && (
-            <div className="bg-card border-t border-border">
-              <div className="p-3 border-b border-border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {matchResult
-                      ? (
-                        <>
-                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                          <span className="text-sm font-medium text-foreground">
-                            匹配结果
-                          </span>
-                          <Badge
-                            variant={matchResult.policy === "DIRECT"
-                              ? "default"
-                              : matchResult.policy === "PROXY"
-                              ? "secondary"
-                              : "destructive"}
-                            className="text-xs rounded-md font-semibold"
-                          >
-                            {matchResult.policy}
-                          </Badge>
+          {/* Bottom Panel - Dynamic height like VSCode bottom panel */}
+          <div
+            className={`bg-card border-t border-border flex flex-col transition-all duration-300 ${
+              matchResultExpanded ? "h-48" : "h-12"
+            }`}
+          >
+            <div
+              className={`${
+                matchResultExpanded ? "p-3 border-b border-border" : "p-2"
+              } bg-muted/30`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {matchResult
+                    ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        <span className="text-sm font-medium text-foreground">
+                          匹配结果
+                        </span>
+                        <Badge
+                          variant={matchResult.policy === "DIRECT"
+                            ? "default"
+                            : matchResult.policy === "PROXY"
+                            ? "secondary"
+                            : "destructive"}
+                          className="text-xs rounded-md font-semibold"
+                        >
+                          {matchResult.policy}
+                        </Badge>
+                        {matchResultExpanded && (
                           <span>
                             <span className="text-muted-foreground text-sm">
                               代码 line {matchResult.lineNumber}{" "}
                               / 匹配规则：{matchResult.rule}
                             </span>
                           </span>
-                        </>
-                      )
-                      : (
-                        <>
-                          <Play className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium text-foreground">
-                            匹配结果
-                          </span>
-                          <Badge
-                            variant="outline"
-                            className="text-xs rounded-md"
-                          >
-                            等待测试
-                          </Badge>
-                        </>
-                      )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {isTestingInProgress && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        测试中...
-                      </div>
+                        )}
+                      </>
+                    )
+                    : (
+                      <>
+                        <Play className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium text-foreground">
+                          匹配结果
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className="text-xs rounded-md"
+                        >
+                          等待测试
+                        </Badge>
+                      </>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        setMatchResultExpanded(!matchResultExpanded)}
-                      className="h-6 w-6 p-0"
-                    >
-                      {matchResultExpanded
-                        ? <ChevronDown className="h-3 w-3" />
-                        : <ChevronUp className="h-3 w-3" />}
-                    </Button>
-                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isTestingInProgress && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      测试中...
+                    </div>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setMatchResultExpanded(!matchResultExpanded)}
+                    className="h-6 w-6 p-0"
+                  >
+                    {matchResultExpanded
+                      ? <ChevronDown className="h-3 w-3" />
+                      : <ChevronUp className="h-3 w-3" />}
+                  </Button>
                 </div>
               </div>
+            </div>
 
+            {/* Scrollable content area */}
+            <div className="flex-1 overflow-y-auto">
               {matchResultExpanded && (
                 <div className="p-4 space-y-3">
                   {matchResult
@@ -948,7 +968,7 @@ export default function ClashRuleTester() {
                 </div>
               )}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Right Column: Enhanced Test Panel and Results */}
@@ -996,6 +1016,15 @@ export default function ClashRuleTester() {
               </div>
               <div className="p-4 space-y-4">
                 <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="enable-domain"
+                    checked={enabledTestItems.domain}
+                    onCheckedChange={(checked) =>
+                      setEnabledTestItems((prev) => ({
+                        ...prev,
+                        domain: !!checked,
+                      }))}
+                  />
                   <Label
                     htmlFor="test-domain"
                     className="text-foreground text-sm min-w-[60px]"
@@ -1008,13 +1037,27 @@ export default function ClashRuleTester() {
                     onChange={(e) => setTestDomain(e.target.value)}
                     placeholder="www.example.com"
                     className="hover:bg-accent/60 transition-colors rounded-md flex-1"
+                    disabled={!enabledTestItems.domain}
                   />
                 </div>
 
                 {/* Source IP Configuration */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 justify-between">
-                    <Label className="text-foreground min-w-fit">源 IP:</Label>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="enable-src-ip"
+                        checked={enabledTestItems.srcIP}
+                        onCheckedChange={(checked) =>
+                          setEnabledTestItems((prev) => ({
+                            ...prev,
+                            srcIP: !!checked,
+                          }))}
+                      />
+                      <Label className="text-foreground min-w-fit">
+                        源 IP:
+                      </Label>
+                    </div>
                     <Select
                       value={srcIPType}
                       onValueChange={(value: "ipv4" | "ipv6" | "both") =>
@@ -1037,6 +1080,7 @@ export default function ClashRuleTester() {
                         onChange={(e) => setTestSrcIPv4(e.target.value)}
                         placeholder="192.168.1.100"
                         className="hover:bg-accent/60 transition-colors rounded-md"
+                        disabled={!enabledTestItems.srcIP}
                       />
                     )}
                     {(srcIPType === "ipv6" || srcIPType === "both") && (
@@ -1045,12 +1089,22 @@ export default function ClashRuleTester() {
                         onChange={(e) => setTestSrcIPv6(e.target.value)}
                         placeholder="2001:db8::1"
                         className="hover:bg-accent/60 transition-colors rounded-md"
+                        disabled={!enabledTestItems.srcIP}
                       />
                     )}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="enable-src-port"
+                    checked={enabledTestItems.srcPort}
+                    onCheckedChange={(checked) =>
+                      setEnabledTestItems((prev) => ({
+                        ...prev,
+                        srcPort: !!checked,
+                      }))}
+                  />
                   <Label
                     htmlFor="test-src-port"
                     className="text-foreground text-sm min-w-[80px]"
@@ -1063,6 +1117,7 @@ export default function ClashRuleTester() {
                     onChange={(e) => setTestSrcPort(e.target.value)}
                     placeholder="12345"
                     className="hover:bg-accent/60 transition-colors rounded-md flex-1"
+                    disabled={!enabledTestItems.srcPort}
                   />
                 </div>
 

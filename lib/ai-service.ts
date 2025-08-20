@@ -1,6 +1,6 @@
 import { generateText } from "ai";
-import { openai } from "@ai-sdk/openai";
-import { google } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
 interface AISettings {
   provider: "openai" | "gemini" | "openai-compatible" | "";
@@ -16,22 +16,30 @@ export class AIService {
     this.settings = settings;
   }
 
-  /// TODO: fix the AI model call
   private getModel() {
     switch (this.settings.provider) {
-      case "openai":
-        return openai(this.settings.model, {
+      case "openai": {
+        // 为 OpenAI 创建自定义实例
+        const customOpenAI = createOpenAI({
           apiKey: this.settings.apiKey,
         });
-      case "gemini":
-        return google(this.settings.model, {
+        return customOpenAI(this.settings.model);
+      }
+      case "gemini": {
+        // 为 Google Gemini 创建自定义实例
+        const customGoogle = createGoogleGenerativeAI({
           apiKey: this.settings.apiKey,
         });
-      case "openai-compatible":
-        return openai(this.settings.model, {
+        return customGoogle(this.settings.model);
+      }
+      case "openai-compatible": {
+        // 为 OpenAI 兼容的 API 创建自定义实例
+        const customOpenAI = createOpenAI({
           apiKey: this.settings.apiKey,
           baseURL: this.settings.endpoint,
         });
+        return customOpenAI(this.settings.model);
+      }
       default:
         throw new Error("Unsupported AI provider");
     }
