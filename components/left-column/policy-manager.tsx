@@ -15,6 +15,8 @@ import {
     X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Policy {
     id: string;
@@ -163,7 +165,12 @@ export function PolicyManager({
                 </div>
 
                 {/* Policy List */}
-                <div className="space-y-2 max-h-48 overflow-y-auto">
+                <div
+                    className={cn(
+                        "space-y-2 overflow-y-auto",
+                        useIsMobile() ? "max-h-48" : "max-h-96",
+                    )}
+                >
                     {policies.map((policy) => (
                         <div
                             key={policy.id}

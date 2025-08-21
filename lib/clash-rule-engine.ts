@@ -40,11 +40,6 @@ export class ClashRuleEngine {
     this.parseRules(rulesText);
   }
 
-  // 添加获取规则数量的方法
-  public getRuleCount(): number {
-    return this.rules.length;
-  }
-
   private parseRules(rulesText: string) {
     const lines = rulesText.split("\n");
     this.rules = [];
@@ -561,7 +556,8 @@ export class ClashRuleEngine {
     return mockASNData[ip] === asn;
   }
 
-  // TODO: Need to expose to user to edit.
+  // TODO: 需要采用真实的环境中的 GeoIP 数据库（GeoIP 数据源来自于 clashruler\components\right-column\rule-tester.tsx 的 line 485-525 部分
+  // 可以参考 page.tsx 在 578-589 行的代码，数据传入
   private matchGeoSite(domain: string | undefined, category: string): boolean {
     if (!domain) return false;
 
@@ -723,6 +719,7 @@ export class ClashRuleEngine {
     return this.numberToIp(networkEnd);
   }
 
+  // 添加获取规则数量的方法
   public getRuleCount(): number {
     return this.rules.filter((r) => !r.ruleType.startsWith("#")).length;
   }

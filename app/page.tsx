@@ -90,6 +90,10 @@ export default function ClashRuleTester() {
   const [isTestingInProgress, setIsTestingInProgress] = useState(false);
 
   // 验证结果
+
+  /// TODO: 存在问题需要修复：
+  /// 1. 当我在编辑器中写了错误的语法时，我能看到错误提示
+  /// 2. 但是当我又去点击其他地方的 UI，控件时，比如策略管理，然后新加了一个策略，我原本的错误的语法这时仍是存在的，但是 UI 上却没有错误提示了
   const validationResults = ruleEngine.validateRules();
 
   // 策略管理
@@ -442,6 +446,20 @@ export default function ClashRuleTester() {
         {/* Left Column: Quick Rule Builder & Policy Management */}
         <div className="w-80 border-r border-border bg-sidebar/30 overflow-y-auto custom-scrollbar">
           <div className="p-4 space-y-4">
+            {/* AI Optimization */}
+            <Button
+              variant="outline"
+              className="w-full hover:scale-[1.02] hover:shadow-sm transition-all duration-200 bg-transparent hover:bg-accent/80 rounded-md"
+              size="sm"
+              onClick={optimizeRules}
+              disabled={!aiService.isConfigured() || isOptimizing}
+            >
+              {isOptimizing
+                ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                : <Sparkles className="h-4 w-4 mr-2" />}
+              AI 优化规则
+            </Button>
+
             {/* Quick Rule Builder */}
             <QuickRuleCreator
               policies={policies}
@@ -532,20 +550,6 @@ export default function ClashRuleTester() {
                 });
               }}
             />
-
-            {/* AI Optimization */}
-            <Button
-              variant="outline"
-              className="w-full hover:scale-[1.02] hover:shadow-sm transition-all duration-200 bg-transparent hover:bg-accent/80 rounded-md"
-              size="sm"
-              onClick={optimizeRules}
-              disabled={!aiService.isConfigured() || isOptimizing}
-            >
-              {isOptimizing
-                ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                : <Sparkles className="h-4 w-4 mr-2" />}
-              AI 优化规则
-            </Button>
 
             {/* Validation Results */}
             {validationResults.length > 0 && (
