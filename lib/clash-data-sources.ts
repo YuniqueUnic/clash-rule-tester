@@ -19,6 +19,7 @@ export const CLASH_RULE_TYPES = [
   "SRC-PORT",
   "IN-PORT",
   "SRC-IP-CIDR",
+  "DST-IP-CIDR",
   "RULE-SET",
   "AND",
   "OR",
@@ -134,17 +135,17 @@ export const IP_TO_ASN_MAP: Record<string, string> = {
 
 // Rule Set 预置数据
 export const RULE_SETS: Record<string, (request: TestRequest) => boolean> = {
-  // 广告相关域名和IP
+  // 广告相关域名和 IP
   "ads": (request) => {
     const adDomains = [
       "googleadservices.com",
       "googlesyndication.com",
       "doubleclick.net",
       "facebook.com/tr",
-      "amazon-adsystem.com"
+      "amazon-adsystem.com",
     ];
     return !!(
-      request.domain && adDomains.some(ad => request.domain!.includes(ad))
+      request.domain && adDomains.some((ad) => request.domain!.includes(ad))
     );
   },
 
@@ -155,10 +156,11 @@ export const RULE_SETS: Record<string, (request: TestRequest) => boolean> = {
       "twitter.com",
       "instagram.com",
       "linkedin.com",
-      "tiktok.com"
+      "tiktok.com",
     ];
     return !!(
-      request.domain && socialDomains.some(social => request.domain!.includes(social))
+      request.domain &&
+      socialDomains.some((social) => request.domain!.includes(social))
     );
   },
 
@@ -169,10 +171,11 @@ export const RULE_SETS: Record<string, (request: TestRequest) => boolean> = {
       "youtube.com",
       "twitch.tv",
       "disneyplus.com",
-      "spotify.com"
+      "spotify.com",
     ];
     return !!(
-      request.domain && streamingDomains.some(streaming => request.domain!.includes(streaming))
+      request.domain &&
+      streamingDomains.some((streaming) => request.domain!.includes(streaming))
     );
   },
 
@@ -183,10 +186,11 @@ export const RULE_SETS: Record<string, (request: TestRequest) => boolean> = {
       "epicgames.com",
       "battle.net",
       "riotgames.com",
-      "xbox.com"
+      "xbox.com",
     ];
     return !!(
-      request.domain && gamingDomains.some(game => request.domain!.includes(game))
+      request.domain &&
+      gamingDomains.some((game) => request.domain!.includes(game))
     );
   },
 
@@ -197,10 +201,10 @@ export const RULE_SETS: Record<string, (request: TestRequest) => boolean> = {
       "gitlab.com",
       "stackoverflow.com",
       "npmjs.com",
-      "docker.com"
+      "docker.com",
     ];
     return !!(
-      request.domain && devDomains.some(dev => request.domain!.includes(dev))
+      request.domain && devDomains.some((dev) => request.domain!.includes(dev))
     );
   },
 
@@ -211,10 +215,10 @@ export const RULE_SETS: Record<string, (request: TestRequest) => boolean> = {
       "qq.com",
       "taobao.com",
       "weibo.com",
-      "bilibili.com"
+      "bilibili.com",
     ];
     return !!(
-      request.domain && cnDomains.some(cn => request.domain!.includes(cn))
+      request.domain && cnDomains.some((cn) => request.domain!.includes(cn))
     );
   },
 
@@ -225,7 +229,7 @@ export const RULE_SETS: Record<string, (request: TestRequest) => boolean> = {
       (request.dstPort && proxyPorts.includes(request.dstPort)) ||
       (request.srcPort && proxyPorts.includes(request.srcPort))
     );
-  }
+  },
 };
 
 export interface PolicyData {

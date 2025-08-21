@@ -1,3 +1,5 @@
+import { CLASH_POLICIES, CLASH_RULE_TYPES } from "@/lib/clash-data-sources";
+
 export interface TestRequest {
   domain?: string;
   process?: string;
@@ -717,36 +719,10 @@ export class ClashRuleEngine {
   ): { valid: boolean; error?: string; severity?: "error" | "warning" } {
     const { ruleType, content, policy } = rule;
 
-    const supportedTypes = [
-      "DOMAIN",
-      "DOMAIN-SUFFIX",
-      "DOMAIN-KEYWORD",
-      "DOMAIN-REGEX",
-      "IP-CIDR",
-      "IP-CIDR6",
-      "IP-ASN",
-      "GEOIP",
-      "GEOSITE",
-      "PROCESS-NAME",
-      "PROCESS-PATH",
-      "PROCESS-PATH-REGEX",
-      "DST-PORT",
-      "SRC-PORT",
-      "IN-PORT",
-      "SRC-IP-CIDR",
-      "DST-IP-CIDR",
-      "RULE-SET",
-      "AND",
-      "OR",
-      "NOT",
-      "SUB-RULE",
-      "NETWORK",
-      "UID",
-      "IN-TYPE",
-      "MATCH",
-    ];
+    // 使用 clash data sources 中定义的 rule types 常量
+    const supportedTypes = CLASH_RULE_TYPES;
 
-    if (!supportedTypes.includes(ruleType)) {
+    if (!supportedTypes.includes(ruleType as any)) {
       return {
         valid: false,
         error: `Unsupported rule type: ${ruleType}`,
@@ -776,10 +752,11 @@ export class ClashRuleEngine {
       }
     }
 
-    const validPolicies = ["DIRECT", "PROXY", "REJECT", "PASS"];
+    // 使用 clash data sources 中定义的策略常量
+    const validPolicies = CLASH_POLICIES;
     const isCustomPolicy = policy.match(/^[A-Z][A-Z0-9_-]*$/);
 
-    if (!validPolicies.includes(policy) && !isCustomPolicy) {
+    if (!validPolicies.includes(policy as any) && !isCustomPolicy) {
       return {
         valid: false,
         error: `Invalid policy format: ${policy}`,

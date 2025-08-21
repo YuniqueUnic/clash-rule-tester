@@ -56,62 +56,74 @@ export function QuickRuleCreator(
                 </h3>
             </div>
             <div className="p-4 space-y-4">
-                <div className="flex items-center gap-2 space-y-2">
-                    <Label
-                        htmlFor="rule-type"
-                        className="text-foreground"
-                    >
-                        规则类型
-                    </Label>
-                    <Select
-                        value={newRuleType}
-                        onValueChange={setNewRuleType}
-                    >
-                        <SelectTrigger className="hover:bg-accent/60 transition-colors rounded-md flex-1">
-                            <SelectValue placeholder="选择规则类型" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {CLASH_RULE_TYPES.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                    {type}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-1">
+                        <Label
+                            htmlFor="rule-type"
+                            className="text-foreground text-sm min-w-[80px]"
+                        >
+                            规则类型
+                        </Label>
+                        <Select
+                            value={newRuleType}
+                            onValueChange={setNewRuleType}
+                        >
+                            <SelectTrigger className="hover:bg-accent/60 transition-colors rounded-md flex-1">
+                                <SelectValue placeholder="选择规则类型" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {CLASH_RULE_TYPES.map((type) => (
+                                    <SelectItem key={type} value={type}>
+                                        {type}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
 
-                <div className="space-y-2 flex items-center gap-2">
-                    <Label htmlFor="rule-content" className="text-foreground">
-                        内容
-                    </Label>
-                    <Input
-                        id="rule-content"
-                        value={newRuleContent}
-                        onChange={(e) => setNewRuleContent(e.target.value)}
-                        placeholder="例如：google.com"
-                        className="hover:bg-accent/60 transition-colors rounded-md flex-1"
-                    />
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-1">
+                        <Label
+                            htmlFor="rule-content"
+                            className="text-foreground text-sm min-w-[60px]"
+                        >
+                            内容
+                        </Label>
+                        <Input
+                            id="rule-content"
+                            value={newRuleContent}
+                            onChange={(e) => setNewRuleContent(e.target.value)}
+                            placeholder="例如：google.com"
+                            className="hover:bg-accent/60 transition-colors rounded-md flex-1"
+                        />
+                    </div>
                 </div>
 
-                <div className="space-y-2 flex items-center gap-2">
-                    <Label htmlFor="rule-policy" className="text-foreground">
-                        策略
-                    </Label>
-                    <Select
-                        value={newRulePolicy}
-                        onValueChange={setNewRulePolicy}
-                    >
-                        <SelectTrigger className="hover:bg-accent/60 transition-colors rounded-md flex-1">
-                            <SelectValue placeholder="选择策略" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {policies.map((policy) => (
-                                <SelectItem key={policy.id} value={policy.name}>
-                                    {policy.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-1">
+                        <Label
+                            htmlFor="rule-policy"
+                            className="text-foreground text-sm min-w-[60px]"
+                        >
+                            策略
+                        </Label>
+                        <Select
+                            value={newRulePolicy}
+                            onValueChange={setNewRulePolicy}
+                        >
+                            <SelectTrigger className="hover:bg-accent/60 transition-colors rounded-md flex-1">
+                                <SelectValue placeholder="选择策略" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {policies.map((policy) => (
+                                    <SelectItem key={policy.id} value={policy.name}>
+                                        {policy.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
 
                 <Button
