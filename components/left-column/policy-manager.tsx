@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
     Check,
     Download,
+    PenLine,
     Plus,
     Settings,
     Trash2,
@@ -240,7 +241,7 @@ export function PolicyManager({
                                                     variant="ghost"
                                                     className="h-5 w-5 p-0 hover:bg-accent"
                                                 >
-                                                    <Settings className="h-3 w-3" />
+                                                    <PenLine className="h-3 w-3" />
                                                 </Button>
                                                 <Button
                                                     onClick={() =>

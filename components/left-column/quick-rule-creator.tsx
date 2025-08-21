@@ -56,12 +56,18 @@ export function QuickRuleCreator(
                 </h3>
             </div>
             <div className="p-4 space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="rule-type" className="text-foreground">
+                <div className="flex items-center gap-2 space-y-2">
+                    <Label
+                        htmlFor="rule-type"
+                        className="text-foreground"
+                    >
                         规则类型
                     </Label>
-                    <Select value={newRuleType} onValueChange={setNewRuleType}>
-                        <SelectTrigger className="hover:bg-accent/60 transition-colors rounded-md">
+                    <Select
+                        value={newRuleType}
+                        onValueChange={setNewRuleType}
+                    >
+                        <SelectTrigger className="hover:bg-accent/60 transition-colors rounded-md flex-1">
                             <SelectValue placeholder="选择规则类型" />
                         </SelectTrigger>
                         <SelectContent>
@@ -74,7 +80,7 @@ export function QuickRuleCreator(
                     </Select>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 flex items-center gap-2">
                     <Label htmlFor="rule-content" className="text-foreground">
                         内容
                     </Label>
@@ -83,11 +89,11 @@ export function QuickRuleCreator(
                         value={newRuleContent}
                         onChange={(e) => setNewRuleContent(e.target.value)}
                         placeholder="例如：google.com"
-                        className="hover:bg-accent/60 transition-colors rounded-md"
+                        className="hover:bg-accent/60 transition-colors rounded-md flex-1"
                     />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 flex items-center gap-2">
                     <Label htmlFor="rule-policy" className="text-foreground">
                         策略
                     </Label>
@@ -95,7 +101,7 @@ export function QuickRuleCreator(
                         value={newRulePolicy}
                         onValueChange={setNewRulePolicy}
                     >
-                        <SelectTrigger className="hover:bg-accent/60 transition-colors rounded-md">
+                        <SelectTrigger className="hover:bg-accent/60 transition-colors rounded-md flex-1">
                             <SelectValue placeholder="选择策略" />
                         </SelectTrigger>
                         <SelectContent>

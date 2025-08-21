@@ -146,7 +146,8 @@ export default function ClashRuleTester() {
     GEOIP_COUNTRIES.filter((c) => c.popular).map((c) => c.code),
   );
   const [networkTypes, setNetworkTypes] = useState<string[]>(
-    NETWORK_TYPES.filter((n) => n.category === "transport").map((n) => n.type),
+    // NETWORK_TYPES.filter((n) => n.category === "transport").map((n) => n.type),
+    NETWORK_TYPES.map((n) => n.type),
   );
   const [newCountryCode, setNewCountryCode] = useState("");
   const [newNetworkType, setNewNetworkType] = useState("");
@@ -566,7 +567,7 @@ export default function ClashRuleTester() {
           <div
             className={`bg-card overflow-hidden transition-all duration-300 ${
               matchResultExpanded
-                ? "h-[calc(100%-12rem)]"
+                ? "h-[calc(100%-16rem)]"
                 : "h-[calc(100%-3rem)]"
             }`}
           >

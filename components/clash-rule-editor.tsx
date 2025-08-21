@@ -1007,8 +1007,36 @@ export function ClashRuleEditor({
       const reader = new FileReader();
       reader.onload = (e) => {
         const content = e.target?.result as string;
-        onChange(content);
-        saveToHistory(content);
+
+        // 定义所有支持的引号字符
+        const quotes = new Set(['"', "'", '"', '"', "'", "'"]);
+        const processLineFunc = (line: string) => {
+          let processedLine = line.trim();
+
+          // 去掉开头的 "- " 或 "-"（支持多个连续的短横线）
+          processedLine = processedLine.replace(/^-+\s*/, "").trim();
+
+          // 检查并移除首尾的引号（无论是否成对）
+          if (processedLine.length > 1) {
+            const firstChar = processedLine[0];
+            const lastChar = processedLine[processedLine.length - 1];
+
+            // 如果首尾都是引号字符，则移除
+            if (quotes.has(firstChar) && quotes.has(lastChar)) {
+              processedLine = processedLine.slice(1, -1).trim();
+            }
+          }
+
+          return processedLine;
+        };
+
+        // 两遍遍历
+        let processedLines = content.split("\n").map(processLineFunc);
+        processedLines = processedLines.map(processLineFunc);
+
+        const processedContent = processedLines.join("\n");
+        onChange(processedContent);
+        saveToHistory(processedContent);
         toast({
           title: "导入成功",
           description: `已从 ${file.name} 导入规则配置`,
@@ -1016,6 +1044,7 @@ export function ClashRuleEditor({
       };
       reader.readAsText(file);
     }
+
     // 重置文件输入
     if (fileInputRef.current) {
       fileInputRef.current.value = "";

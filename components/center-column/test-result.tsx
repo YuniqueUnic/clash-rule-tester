@@ -12,6 +12,7 @@ import {
     Sparkles,
 } from "lucide-react";
 import type { MatchResult } from "@/lib/clash-rule-engine";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface TestResultProps {
     matchResult: MatchResult | null;
@@ -34,10 +35,12 @@ export function TestResult({
     onExplainRule,
     aiConfigured,
 }: TestResultProps) {
+    const isMobile = useIsMobile();
+
     return (
         <div
             className={`bg-card border-t border-border flex flex-col transition-all duration-300 ${
-                matchResultExpanded ? "h-48" : "h-12"
+                matchResultExpanded ? isMobile ? "h-48" : "h-96" : "h-12"
             }`}
         >
             <div
