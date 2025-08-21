@@ -293,20 +293,22 @@ export function RuleTester({
                                 srcPort: !!checked,
                             }))}
                     />
-                    <Label
-                        htmlFor="enable-src-port"
-                        className="text-foreground text-sm min-w-[80px]"
-                    >
-                        源端口：
-                    </Label>
-                    <Input
-                        id="test-src-port"
-                        value={testSrcPort}
-                        onChange={(e) => setTestSrcPort(e.target.value)}
-                        placeholder="12345"
-                        className="hover:bg-accent/60 transition-colors rounded-md flex-1"
-                        disabled={!enabledTestItems.srcPort}
-                    />
+                    <div className="flex items-center gap-2 flex-1">
+                        <Label
+                            htmlFor="enable-src-port"
+                            className="text-foreground text-sm min-w-[80px]"
+                        >
+                            源端口：
+                        </Label>
+                        <Input
+                            id="test-src-port"
+                            value={testSrcPort}
+                            onChange={(e) => setTestSrcPort(e.target.value)}
+                            placeholder="12345"
+                            className="hover:bg-accent/60 transition-colors rounded-md flex-1"
+                            disabled={!enabledTestItems.srcPort}
+                        />
+                    </div>
                 </div>
 
                 {/* Destination IP Configuration */}
@@ -374,20 +376,22 @@ export function RuleTester({
                                 dstPort: !!checked,
                             }))}
                     />
-                    <Label
-                        htmlFor="enable-dst-port"
-                        className="text-foreground text-sm min-w-[80px]"
-                    >
-                        目标端口：
-                    </Label>
-                    <Input
-                        id="test-dst-port"
-                        value={testDstPort}
-                        onChange={(e) => setTestDstPort(e.target.value)}
-                        placeholder="443"
-                        className="hover:bg-accent/60 transition-colors rounded-md flex-1"
-                        disabled={!enabledTestItems.dstPort}
-                    />
+                    <div className="flex items-center gap-2 flex-1">
+                        <Label
+                            htmlFor="enable-dst-port"
+                            className="text-foreground text-sm min-w-[80px]"
+                        >
+                            目标端口：
+                        </Label>
+                        <Input
+                            id="test-dst-port"
+                            value={testDstPort}
+                            onChange={(e) => setTestDstPort(e.target.value)}
+                            placeholder="443"
+                            className="hover:bg-accent/60 transition-colors rounded-md flex-1"
+                            disabled={!enabledTestItems.dstPort}
+                        />
+                    </div>
                 </div>
 
                 {/* Process */}
@@ -609,20 +613,22 @@ export function RuleTester({
                                 uid: !!checked,
                             }))}
                     />
-                    <Label
-                        htmlFor="enable-uid"
-                        className="text-foreground text-sm min-w-[80px]"
-                    >
-                        用户 ID:
-                    </Label>
-                    <Input
-                        id="test-uid"
-                        value={testUID}
-                        onChange={(e) => setTestUID(e.target.value)}
-                        placeholder="1000"
-                        className="hover:bg-accent/60 transition-colors rounded-md flex-1"
-                        disabled={!enabledTestItems.uid}
-                    />
+                    <div className="flex items-center gap-2 flex-1">
+                        <Label
+                            htmlFor="enable-uid"
+                            className="text-foreground text-sm min-w-[80px]"
+                        >
+                            用户 ID:
+                        </Label>
+                        <Input
+                            id="test-uid"
+                            value={testUID}
+                            onChange={(e) => setTestUID(e.target.value)}
+                            placeholder="1000"
+                            className="hover:bg-accent/60 transition-colors rounded-md flex-1"
+                            disabled={!enabledTestItems.uid}
+                        />
+                    </div>
                 </div>
             </div>
         </div>

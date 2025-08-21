@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -37,10 +37,14 @@ import {
   type EnabledTestItems,
   GEOIP_COUNTRIES,
   type GeoIPCountryData,
+  GEOSITE_CATEGORIES,
+  IP_TO_ASN_MAP,
+  IP_TO_COUNTRY_MAP,
   NETWORK_TYPES,
   type NetworkTypeData,
   POLICIES,
   type PolicyData,
+  RULE_SETS,
   SAMPLE_RULES,
   type TestMetrics as TestMetricsType,
 } from "@/lib/clash-data-sources";
@@ -94,7 +98,9 @@ export default function ClashRuleTester() {
   /// TODO: 存在问题需要修复：
   /// 1. 当我在编辑器中写了错误的语法时，我能看到错误提示
   /// 2. 但是当我又去点击其他地方的 UI，控件时，比如策略管理，然后新加了一个策略，我原本的错误的语法这时仍是存在的，但是 UI 上却没有错误提示了
-  const validationResults = ruleEngine.validateRules();
+  const validationResults = useMemo(() => {
+    return ruleEngine.validateRules();
+  }, [rules, ruleEngine]);
 
   // 策略管理
   const [policies, setPolicies] = useState<Policy[]>(() =>
@@ -122,6 +128,25 @@ export default function ClashRuleTester() {
   const [testGeoIP, setTestGeoIP] = useState("US");
   const [testNetwork, setTestNetwork] = useState("tcp");
   const [testUID, setTestUID] = useState("1000");
+
+  // GeoIP、GeoSite 和 ASN 数据
+  const [geoIPDatabase, setGeoIPDatabase] = useState<Record<string, string>>(
+    () => IP_TO_COUNTRY_MAP,
+  );
+
+  const [geoSiteData, setGeoSiteData] = useState<Record<string, string[]>>(
+    () => GEOSITE_CATEGORIES,
+  );
+
+  const [asnData, setAsnData] = useState<Record<string, string>>(
+    () => IP_TO_ASN_MAP,
+  );
+
+  const [ruleSetData, setRuleSetData] = useState<
+    Record<string, (request: TestRequest) => boolean>
+  >(
+    () => RULE_SETS,
+  );
 
   // 启用的测试项目
   const [enabledTestItems, setEnabledTestItems] = useState<EnabledTestItems>(
@@ -174,14 +199,18 @@ export default function ClashRuleTester() {
   // AI 服务
   const aiService = new AIService(aiSettings);
 
-  // 更新规则引擎
+  // 更新规则引擎和 GeoIP/GeoSite/ASN/Rule Set 数据
   useEffect(() => {
     try {
       ruleEngine.updateRules(rules);
+      ruleEngine.setGeoIPDatabase(geoIPDatabase);
+      ruleEngine.setGeoSiteData(geoSiteData);
+      ruleEngine.setASNData(asnData);
+      ruleEngine.setRuleSetData(ruleSetData);
     } catch (error) {
-      console.error("Failed to update rules:", error);
+      console.error("Failed to update rules or data:", error);
     }
-  }, [rules, ruleEngine]);
+  }, [rules, ruleEngine, geoIPDatabase, geoSiteData, asnData, ruleSetData]);
 
   // 测试规则函数
   const testRules = useCallback(() => {

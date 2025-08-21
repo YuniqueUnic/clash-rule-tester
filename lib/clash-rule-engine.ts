@@ -30,6 +30,10 @@ export interface MatchResult {
 
 export class ClashRuleEngine {
   private rules: ParsedRule[] = [];
+  private _geoIPDatabase: Record<string, string> = {};
+  private _geoSiteData: Record<string, string[]> = {};
+  private _asnData: Record<string, string> = {};
+  private _ruleSetData: Record<string, (request: TestRequest) => boolean> = {};
 
   constructor(rulesText: string) {
     this.parseRules(rulesText);
@@ -542,18 +546,27 @@ export class ClashRuleEngine {
       .join("");
   }
 
+  public setGeoIPDatabase(data: Record<string, string>): void {
+    this._geoIPDatabase = data;
+  }
+
+  public setGeoSiteData(data: Record<string, string[]>): void {
+    this._geoSiteData = data;
+  }
+
+  public setASNData(data: Record<string, string>): void {
+    this._asnData = data;
+  }
+
+  public setRuleSetData(
+    data: Record<string, (request: TestRequest) => boolean>,
+  ): void {
+    this._ruleSetData = data;
+  }
+
   private matchIPASN(ip: string | undefined, asn: string): boolean {
     if (!ip) return false;
-
-    // Mock ASN data - in production would use real ASN database
-    const mockASNData: Record<string, string> = {
-      "8.8.8.8": "15169", // Google
-      "1.1.1.1": "13335", // Cloudflare
-      "114.114.114.114": "4134", // China Telecom
-      "223.5.5.5": "37963", // Alibaba
-    };
-
-    return mockASNData[ip] === asn;
+    return this._asnData[ip] === asn;
   }
 
   // TODO: 需要采用真实的环境中的 GeoIP 数据库（GeoIP 数据源来自于 clashruler\components\right-column\rule-tester.tsx 的 line 485-525 部分
@@ -561,42 +574,14 @@ export class ClashRuleEngine {
   private matchGeoSite(domain: string | undefined, category: string): boolean {
     if (!domain) return false;
 
-    // Mock GeoSite data - in production would use real GeoSite database
-    const mockGeoSiteData: Record<string, string[]> = {
-      google: [
-        "google.com",
-        "googleapis.com",
-        "googleusercontent.com",
-        "youtube.com",
-      ],
-      facebook: ["facebook.com", "instagram.com", "whatsapp.com"],
-      microsoft: ["microsoft.com", "office.com", "outlook.com", "xbox.com"],
-      apple: ["apple.com", "icloud.com", "itunes.com"],
-      cn: ["baidu.com", "qq.com", "weibo.com", "taobao.com"],
-    };
-
-    const sites = mockGeoSiteData[category.toLowerCase()] || [];
+    // Use dynamic GeoSite data - in production would use real GeoSite database
+    const sites = this._geoSiteData[category.toLowerCase()] || [];
     return sites.some((site) => domain.endsWith(site) || domain === site);
   }
 
-  /// TODO: need expose the rule provider to user to edit
   private matchRuleSet(request: TestRequest, ruleSetName: string): boolean {
-    // Mock rule set matching - in production would load external rule sets
-    const mockRuleSets: Record<string, (req: TestRequest) => boolean> = {
-      ads: (req) =>
-        req.domain?.includes("ads") || req.domain?.includes("analytics") ||
-        false,
-      social: (req) =>
-        ["facebook.com", "twitter.com", "instagram.com"].some((site) =>
-          req.domain?.includes(site) || false
-        ),
-      streaming: (req) =>
-        ["netflix.com", "youtube.com", "twitch.tv"].some((site) =>
-          req.domain?.includes(site) || false
-        ),
-    };
-
-    const ruleSet = mockRuleSets[ruleSetName.toLowerCase()];
+    // Use dynamic rule set data
+    const ruleSet = this._ruleSetData[ruleSetName.toLowerCase()];
     return ruleSet ? ruleSet(request) : false;
   }
 
@@ -665,26 +650,11 @@ export class ClashRuleEngine {
     }
   }
 
-  // TODO: Shoul expose to use to edit
   private matchGeoIP(ip: string | undefined, country: string): boolean {
     if (!ip) return false;
 
-    // Enhanced mock GeoIP data
-    const mockGeoData: Record<string, string> = {
-      "8.8.8.8": "US",
-      "8.8.4.4": "US",
-      "1.1.1.1": "US",
-      "1.0.0.1": "US",
-      "114.114.114.114": "CN",
-      "223.5.5.5": "CN",
-      "119.29.29.29": "CN",
-      "208.67.222.222": "US",
-      "208.67.220.220": "US",
-      "9.9.9.9": "US",
-      "149.112.112.112": "US",
-    };
-
-    return mockGeoData[ip] === country.toUpperCase();
+    // Use dynamic GeoIP data - in production would use real GeoIP database
+    return this._geoIPDatabase[ip] === country.toUpperCase();
   }
 
   private ipToNumber(ip: string): number {

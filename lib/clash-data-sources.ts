@@ -119,6 +119,115 @@ export const DEFAULT_TEST_METRICS: TestMetrics = {
   lastTestTime: 0,
 };
 
+// IP 到 ASN 映射（预置数据）
+export const IP_TO_ASN_MAP: Record<string, string> = {
+  "8.8.8.8": "AS15169", // Google
+  "8.8.4.4": "AS15169", // Google
+  "1.1.1.1": "AS13335", // Cloudflare
+  "1.0.0.1": "AS13335", // Cloudflare
+  "114.114.114.114": "AS4134", // China Telecom
+  "223.5.5.5": "AS37963", // Alibaba
+  "119.29.29.29": "AS45090", // Tencent
+  "208.67.222.222": "AS36692", // OpenDNS
+  "9.9.9.9": "AS19281", // Quad9
+};
+
+// Rule Set 预置数据
+export const RULE_SETS: Record<string, (request: TestRequest) => boolean> = {
+  // 广告相关域名和IP
+  "ads": (request) => {
+    const adDomains = [
+      "googleadservices.com",
+      "googlesyndication.com",
+      "doubleclick.net",
+      "facebook.com/tr",
+      "amazon-adsystem.com"
+    ];
+    return !!(
+      request.domain && adDomains.some(ad => request.domain!.includes(ad))
+    );
+  },
+
+  // 社交媒体平台
+  "social": (request) => {
+    const socialDomains = [
+      "facebook.com",
+      "twitter.com",
+      "instagram.com",
+      "linkedin.com",
+      "tiktok.com"
+    ];
+    return !!(
+      request.domain && socialDomains.some(social => request.domain!.includes(social))
+    );
+  },
+
+  // 流媒体服务
+  "streaming": (request) => {
+    const streamingDomains = [
+      "netflix.com",
+      "youtube.com",
+      "twitch.tv",
+      "disneyplus.com",
+      "spotify.com"
+    ];
+    return !!(
+      request.domain && streamingDomains.some(streaming => request.domain!.includes(streaming))
+    );
+  },
+
+  // 游戏平台
+  "gaming": (request) => {
+    const gamingDomains = [
+      "steam.com",
+      "epicgames.com",
+      "battle.net",
+      "riotgames.com",
+      "xbox.com"
+    ];
+    return !!(
+      request.domain && gamingDomains.some(game => request.domain!.includes(game))
+    );
+  },
+
+  // 开发工具
+  "development": (request) => {
+    const devDomains = [
+      "github.com",
+      "gitlab.com",
+      "stackoverflow.com",
+      "npmjs.com",
+      "docker.com"
+    ];
+    return !!(
+      request.domain && devDomains.some(dev => request.domain!.includes(dev))
+    );
+  },
+
+  // 国内服务
+  "cn": (request) => {
+    const cnDomains = [
+      "baidu.com",
+      "qq.com",
+      "taobao.com",
+      "weibo.com",
+      "bilibili.com"
+    ];
+    return !!(
+      request.domain && cnDomains.some(cn => request.domain!.includes(cn))
+    );
+  },
+
+  // 代理工具端口
+  "proxy-ports": (request) => {
+    const proxyPorts = ["1080", "3128", "8080", "1081", "1082"];
+    return !!(
+      (request.dstPort && proxyPorts.includes(request.dstPort)) ||
+      (request.srcPort && proxyPorts.includes(request.srcPort))
+    );
+  }
+};
+
 export interface PolicyData {
   name: string;
   type: "built-in" | "custom";
@@ -300,6 +409,159 @@ export const NETWORK_TYPES: NetworkTypeData[] = [
     category: "tunnel",
   },
 ];
+
+// GeoIP IP 到国家代码映射（预置数据）
+export const IP_TO_COUNTRY_MAP: Record<string, string> = {
+  "1.0.0.0": "AU", // Cloudflare DNS
+  "1.0.0.1": "US",
+  "1.1.1.1": "US",
+  "8.8.8.8": "US", // Google DNS
+  "8.8.4.4": "US",
+  "10.0.0.1": "PRIVATE", // Private network
+  "10.0.0.2": "PRIVATE",
+  "10.255.255.254": "PRIVATE",
+  "100.64.0.0": "SHARED", // Shared Address Space
+  "100.64.0.1": "SHARED",
+  "114.114.114.114": "CN", // China Telecom DNS
+  "119.29.29.29": "CN", // Tencent DNS
+  "127.0.0.1": "LOCAL", // Loopback
+  "172.16.0.1": "PRIVATE", // Private network
+  "172.31.255.254": "PRIVATE",
+  "192.168.0.1": "PRIVATE", // Private network
+  "192.168.1.1": "PRIVATE",
+  "203.0.113.1": "DOC_TEST", // Documentation/Example
+  "203.0.113.254": "DOC_TEST",
+  "223.5.5.5": "CN", // Alibaba DNS
+  "223.6.6.6": "CN", // Alibaba DNS
+  "208.67.222.222": "US", // OpenDNS
+  "208.67.220.220": "US",
+  "9.9.9.9": "US", // Quad9 DNS
+  "149.112.112.112": "US",
+  "45.33.32.1": "US", // Linode
+  "45.79.0.1": "US", // Linode
+  "139.162.0.1": "SG", // Linode Singapore
+  "172.104.0.1": "JP", // Linode Japan
+  "104.16.0.0": "US", // Cloudflare CDN
+  "104.16.255.255": "US",
+  "185.199.108.153": "US", // GitHub Pages
+  "185.199.109.153": "US",
+  "185.199.110.153": "US",
+  "185.199.111.153": "US",
+};
+
+// GeoSite 域名类别映射（预置数据）
+export const GEOSITE_CATEGORIES: Record<string, string[]> = {
+  "google": [
+    "google.com",
+    "google.com.hk",
+    "google.cn",
+    "youtube.com",
+    "youtu.be",
+    "googlevideo.com",
+    "gstatic.com",
+    "googleapis.com",
+    "googleusercontent.com",
+    "g.co",
+    "ggpht.com",
+    "android.com",
+    "chrome.com",
+    "firebase.com",
+    "gvt1.com",
+    "recaptcha.net",
+  ],
+  "facebook": [
+    "facebook.com",
+    "fb.com",
+    "fbcdn.net",
+    "instagram.com",
+    "whatsapp.com",
+    "messenger.com",
+    "oculus.com",
+    "facebook.net",
+  ],
+  "microsoft": [
+    "microsoft.com",
+    "office.com",
+    "outlook.com",
+    "live.com",
+    "msn.com",
+    "bing.com",
+    "azure.com",
+    "windows.com",
+    "xbox.com",
+    "skype.com",
+    "onedrive.com",
+    "github.com",
+    "visualstudio.com",
+  ],
+  "apple": [
+    "apple.com",
+    "icloud.com",
+    "itunes.com",
+    "mac.com",
+    "me.com",
+    "cdn-apple.com",
+    "apple-cloud.com",
+    "mzstatic.com",
+  ],
+  "cn": [
+    "baidu.com",
+    "qq.com",
+    "weibo.com",
+    "taobao.com",
+    "tmall.com",
+    "jd.com",
+    "alipay.com",
+    "wechat.com",
+    "sogou.com",
+    "sohu.com",
+    "163.com",
+    "qq.cn",
+    "sina.com.cn",
+    "tencent.com",
+    "alibaba.com",
+    "alicdn.com",
+    "bilibili.com",
+    "douyin.com",
+    "kuaishou.com",
+    "iqiyi.com",
+    "youku.com",
+    "toutiao.com",
+  ],
+  "streaming": [
+    "netflix.com",
+    "hulu.com",
+    "disneyplus.com",
+    "primevideo.com",
+    "hbomax.com",
+    "spotify.com",
+    "pandora.com",
+    "tidal.com",
+    "appletv.com",
+  ],
+  "game": [
+    "steamgames.com",
+    "steampowered.com",
+    "epicgames.com",
+    "blizzard.com",
+    "riotgames.com",
+    "valve.com",
+    "origin.com",
+    "ubisoft.com",
+  ],
+  "ads": [
+    "ad.com",
+    "ads.com",
+    "admob.com",
+    "doubleclick.net",
+    "googleadservices.com",
+    "googlesyndication.com",
+    "adservice.google.com",
+    "analytics.google.com",
+    "facebook.ads",
+    "tracking.com",
+  ],
+};
 
 // 常用域名后缀
 export const COMMON_DOMAIN_SUFFIXES = [
