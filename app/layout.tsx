@@ -30,6 +30,21 @@ html {
 }
         `}
         </style>
+        {/* 环境变量注入脚本 - 静态部署兼容 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.__ENV__ = {
+                NEXT_PUBLIC_STATIC_DEPLOYMENT: '${process.env.NEXT_PUBLIC_STATIC_DEPLOYMENT || 'true'}',
+                NEXT_PUBLIC_DEPLOYMENT_PLATFORM: '${process.env.NEXT_PUBLIC_DEPLOYMENT_PLATFORM || 'unknown'}',
+                NEXT_PUBLIC_BASE_URL: '${process.env.NEXT_PUBLIC_BASE_URL || ''}',
+                NEXT_PUBLIC_AI_PROVIDER: '${process.env.NEXT_PUBLIC_AI_PROVIDER || ''}',
+                NEXT_PUBLIC_AI_MODEL: '${process.env.NEXT_PUBLIC_AI_MODEL || ''}',
+                NEXT_PUBLIC_AI_ENDPOINT: '${process.env.NEXT_PUBLIC_AI_ENDPOINT || ''}'
+              };
+            `,
+          }}
+        />
       </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <ThemeProvider

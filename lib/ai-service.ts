@@ -1,6 +1,7 @@
 import { generateText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { getAIServiceConfig } from "./env-config";
 
 interface AISettings {
   provider: "openai" | "gemini" | "openai-compatible" | "";
