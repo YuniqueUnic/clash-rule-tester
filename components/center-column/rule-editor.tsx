@@ -1,39 +1,21 @@
 "use client";
 
-import { ClashRuleEditor } from "@/components/clash-rule-editor";
-
-interface Policy {
-    id: string;
-    name: string;
-    comment?: string;
-}
+import { ClashRuleEditor } from "@/components/clash-rule-editor/clash-rule-editor-v2";
 
 interface RuleEditorProps {
     rules: string;
     onRulesChange: (rules: string) => void;
     highlightedLine?: number;
-    ruleCount?: number;
-    hasError?: boolean;
-    errorCount?: number;
-    policies: Policy[];
-    geoIPCountries: string[];
-    networkTypes: string[];
-    currentGeoIPCountries?: string[];
-    currentNetworkTypes?: string[];
 }
 
+/**
+ * 规则编辑器组件
+ * 使用重构后的 ClashRuleEditor，自动获取真实数据
+ */
 export function RuleEditor({
     rules,
     onRulesChange,
     highlightedLine,
-    ruleCount,
-    hasError,
-    errorCount,
-    policies,
-    geoIPCountries,
-    networkTypes,
-    currentGeoIPCountries,
-    currentNetworkTypes,
 }: RuleEditorProps) {
     return (
         <div className="h-full">
@@ -42,14 +24,14 @@ export function RuleEditor({
                 onChange={onRulesChange}
                 highlightedLine={highlightedLine}
                 className="h-full"
-                ruleCount={ruleCount}
-                hasError={hasError}
-                errorCount={errorCount}
-                policies={policies.map((p) => p.name)}
-                geoIPCountries={geoIPCountries}
-                networkTypes={networkTypes}
-                currentGeoIPCountries={currentGeoIPCountries}
-                currentNetworkTypes={currentNetworkTypes}
+                minHeight={300}
+                maxHeight={800}
+                placeholder="# 在此输入 Clash 规则
+# 例如：
+DOMAIN-SUFFIX,google.com,PROXY
+DOMAIN-SUFFIX,github.com,DIRECT
+GEOIP,CN,DIRECT
+MATCH,PROXY"
             />
         </div>
     );

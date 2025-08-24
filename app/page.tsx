@@ -675,14 +675,6 @@ function ClashRuleTester() {
               rules={rules}
               onRulesChange={setRules}
               highlightedLine={highlightedLine}
-              ruleCount={ruleCount}
-              hasError={hasError}
-              errorCount={errorCount}
-              policies={policies}
-              geoIPCountries={geoIPCountryCodes}
-              networkTypes={networkTypesList}
-              currentGeoIPCountries={geoIPCountryCodes}
-              currentNetworkTypes={networkTypesList}
             />
           </div>
 
