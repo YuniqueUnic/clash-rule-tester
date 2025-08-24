@@ -104,14 +104,19 @@ export function ClashRuleEditor({
           onChange(newValue);
         }
       }),
-      // 高度限制
+      // 高度和滚动设置 - 适应分割器布局
       EditorView.theme({
+        ".cm-editor": {
+          height: "100%",
+        },
         ".cm-content": {
           minHeight: `${minHeight}px`,
-          maxHeight: `${maxHeight}px`,
+          maxHeight: maxHeight > 10000 ? "none" : `${maxHeight}px`, // 如果 maxHeight 很大，则不限制
+          padding: "12px",
         },
         ".cm-scroller": {
-          maxHeight: `${maxHeight}px`,
+          maxHeight: maxHeight > 10000 ? "none" : `${maxHeight}px`, // 如果 maxHeight 很大，则不限制
+          overflow: maxHeight > 10000 ? "visible" : "auto", // 大容器时不显示滚动条
         },
       }),
     ];
@@ -176,12 +181,17 @@ export function ClashRuleEditor({
           }
         }),
         EditorView.theme({
+          ".cm-editor": {
+            height: "100%",
+          },
           ".cm-content": {
             minHeight: `${minHeight}px`,
-            maxHeight: `${maxHeight}px`,
+            maxHeight: maxHeight > 10000 ? "none" : `${maxHeight}px`,
+            padding: "12px",
           },
           ".cm-scroller": {
-            maxHeight: `${maxHeight}px`,
+            maxHeight: maxHeight > 10000 ? "none" : `${maxHeight}px`,
+            overflow: maxHeight > 10000 ? "visible" : "auto",
           },
         }),
       ];

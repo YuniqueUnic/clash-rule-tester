@@ -2,13 +2,25 @@
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, HelpCircle, Loader2, Play, Sparkles } from "lucide-react";
+import {
+    CheckCircle,
+    ChevronDown,
+    ChevronUp,
+    Copy,
+    Download,
+    HelpCircle,
+    Loader2,
+    Play,
+    Sparkles,
+} from "lucide-react";
 import type { MatchResult } from "@/lib/clash-rule-engine";
 import { useIsMobile } from "@/hooks/use-mobile";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github.css";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface TestResultProps {
     matchResult: MatchResult | null;
@@ -32,6 +44,49 @@ export function TestResult({
     aiConfigured,
 }: TestResultProps) {
     const isMobile = useIsMobile();
+    const { toast } = useToast();
+    const [isExplanationExpanded, setIsExplanationExpanded] = useState(true);
+
+    // 复制 AI 解释内容
+    const copyExplanation = async () => {
+        if (!ruleExplanation) return;
+
+        try {
+            await navigator.clipboard.writeText(ruleExplanation);
+            toast({
+                title: "复制成功",
+                description: "AI 解释内容已复制到剪贴板",
+            });
+        } catch (error) {
+            toast({
+                title: "复制失败",
+                description: "无法复制到剪贴板",
+                variant: "destructive",
+            });
+        }
+    };
+
+    // 下载 AI 解释内容
+    const downloadExplanation = () => {
+        if (!ruleExplanation) return;
+
+        const blob = new Blob([ruleExplanation], { type: "text/markdown" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `clash-rule-explanation-${
+            new Date().toISOString().slice(0, 19).replace(/:/g, "-")
+        }.md`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        toast({
+            title: "下载成功",
+            description: "AI 解释内容已下载为 Markdown 文件",
+        });
+    };
 
     return (
         <div className="h-full flex flex-col">
@@ -170,80 +225,124 @@ export function TestResult({
 
                     {ruleExplanation && (
                         <div className="mt-3 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:shadow-sm transition-all duration-200">
-                            <div className="flex items-start gap-2 mb-3">
-                                <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                                <div className="font-medium text-sm text-blue-900 dark:text-blue-100">
-                                    AI 解释
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                                    <div className="font-medium text-sm text-blue-900 dark:text-blue-100">
+                                        AI 解释
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={copyExplanation}
+                                        className="h-6 w-6 p-0 hover:bg-blue-200 dark:hover:bg-blue-800/50"
+                                        title="复制内容"
+                                    >
+                                        <Copy className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={downloadExplanation}
+                                        className="h-6 w-6 p-0 hover:bg-blue-200 dark:hover:bg-blue-800/50"
+                                        title="下载为文件"
+                                    >
+                                        <Download className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                            setIsExplanationExpanded(
+                                                !isExplanationExpanded,
+                                            )}
+                                        className="h-6 w-6 p-0 hover:bg-blue-200 dark:hover:bg-blue-800/50"
+                                        title={isExplanationExpanded
+                                            ? "收起"
+                                            : "展开"}
+                                    >
+                                        {isExplanationExpanded
+                                            ? <ChevronUp className="h-3 w-3" />
+                                            : (
+                                                <ChevronDown className="h-3 w-3" />
+                                            )}
+                                    </Button>
                                 </div>
                             </div>
-                            <div className="text-sm text-blue-900 dark:text-blue-100 leading-relaxed prose prose-sm prose-blue dark:prose-invert max-w-none">
-                                <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                                    rehypePlugins={[rehypeHighlight]}
-                                    components={{
-                                        // 自定义组件样式
-                                        h1: ({ children }) => (
-                                            <h1 className="text-lg font-bold mb-2">
-                                                {children}
-                                            </h1>
-                                        ),
-                                        h2: ({ children }) => (
-                                            <h2 className="text-base font-semibold mb-2">
-                                                {children}
-                                            </h2>
-                                        ),
-                                        h3: ({ children }) => (
-                                            <h3 className="text-sm font-medium mb-1">
-                                                {children}
-                                            </h3>
-                                        ),
-                                        p: ({ children }) => (
-                                            <p className="mb-2 last:mb-0">
-                                                {children}
-                                            </p>
-                                        ),
-                                        ul: ({ children }) => (
-                                            <ul className="list-disc list-inside mb-2 space-y-1">
-                                                {children}
-                                            </ul>
-                                        ),
-                                        ol: ({ children }) => (
-                                            <ol className="list-decimal list-inside mb-2 space-y-1">
-                                                {children}
-                                            </ol>
-                                        ),
-                                        li: ({ children }) => (
-                                            <li className="text-sm">
-                                                {children}
-                                            </li>
-                                        ),
-                                        code: ({ children, className }) => {
-                                            const isInline = !className;
-                                            return isInline
-                                                ? (
-                                                    <code className="bg-blue-100 dark:bg-blue-900/30 px-1 py-0.5 rounded text-xs font-mono">
-                                                        {children}
-                                                    </code>
-                                                )
-                                                : (
-                                                    <code className={className}>
-                                                        {children}
-                                                    </code>
-                                                );
-                                        },
-                                        pre: ({ children }) => (
-                                            <pre className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded text-xs overflow-x-auto mb-2">{children}</pre>
-                                        ),
-                                        blockquote: ({ children }) => (
-                                            <blockquote className="border-l-2 border-blue-300 pl-3 italic mb-2">
-                                                {children}
-                                            </blockquote>
-                                        ),
-                                    }}
-                                >
-                                    {ruleExplanation}
-                                </ReactMarkdown>
-                            </div>
+                            {isExplanationExpanded && (
+                                <div className="text-sm text-blue-900 dark:text-blue-100 leading-relaxed prose prose-sm prose-blue dark:prose-invert max-w-none">
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        rehypePlugins={[rehypeHighlight]}
+                                        components={{
+                                            // 自定义组件样式
+                                            h1: ({ children }) => (
+                                                <h1 className="text-lg font-bold mb-2">
+                                                    {children}
+                                                </h1>
+                                            ),
+                                            h2: ({ children }) => (
+                                                <h2 className="text-base font-semibold mb-2">
+                                                    {children}
+                                                </h2>
+                                            ),
+                                            h3: ({ children }) => (
+                                                <h3 className="text-sm font-medium mb-1">
+                                                    {children}
+                                                </h3>
+                                            ),
+                                            p: ({ children }) => (
+                                                <p className="mb-2 last:mb-0">
+                                                    {children}
+                                                </p>
+                                            ),
+                                            ul: ({ children }) => (
+                                                <ul className="list-disc list-inside mb-2 space-y-1">
+                                                    {children}
+                                                </ul>
+                                            ),
+                                            ol: ({ children }) => (
+                                                <ol className="list-decimal list-inside mb-2 space-y-1">
+                                                    {children}
+                                                </ol>
+                                            ),
+                                            li: ({ children }) => (
+                                                <li className="text-sm">
+                                                    {children}
+                                                </li>
+                                            ),
+                                            code: ({ children, className }) => {
+                                                const isInline = !className;
+                                                return isInline
+                                                    ? (
+                                                        <code className="bg-blue-100 dark:bg-blue-900/30 px-1 py-0.5 rounded text-xs font-mono">
+                                                            {children}
+                                                        </code>
+                                                    )
+                                                    : (
+                                                        <code
+                                                            className={className}
+                                                        >
+                                                            {children}
+                                                        </code>
+                                                    );
+                                            },
+                                            pre: ({ children }) => (
+                                                <pre className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded text-xs overflow-x-auto mb-2">{children}</pre>
+                                            ),
+                                            blockquote: ({ children }) => (
+                                                <blockquote className="border-l-2 border-blue-300 pl-3 italic mb-2">
+                                                    {children}
+                                                </blockquote>
+                                            ),
+                                        }}
+                                    >
+                                        {ruleExplanation}
+                                    </ReactMarkdown>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

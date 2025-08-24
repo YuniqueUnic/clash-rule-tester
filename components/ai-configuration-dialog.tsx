@@ -129,15 +129,32 @@ export function AIConfigurationDialog({
       const dynamicModels = availableModels.map((model) => ({
         value: model,
         label: model,
+        source: "api" as const,
       }));
 
-      // 添加自定义模型
-      const customModelOptions = customModels.map((model) => ({
-        value: model,
-        label: `${model} (自定义)`,
-      }));
+      // 添加自定义模型，但要避免与 API 模型重复
+      const customModelOptions = customModels
+        .filter((model) => !availableModels.includes(model)) // 过滤掉重复的
+        .map((model) => ({
+          value: model,
+          label: `${model} (自定义)`,
+          source: "custom" as const,
+        }));
 
-      return [...dynamicModels, ...customModelOptions];
+      // 对于重复的模型，优先显示 API 版本，但在 label 中标注
+      const duplicateCustomModels = customModels
+        .filter((model) => availableModels.includes(model))
+        .map((model) => ({
+          value: model,
+          label: `${model} (API + 自定义)`,
+          source: "both" as const,
+        }));
+
+      return [
+        ...dynamicModels,
+        ...customModelOptions,
+        ...duplicateCustomModels,
+      ];
     }
 
     // 回退到内置模型列表
@@ -230,9 +247,20 @@ export function AIConfigurationDialog({
     }
   };
 
-  // 验证表单
+  // 验证表单（用于保存配置）
   const isFormValid = () => {
     if (!settings.provider || !settings.apiKey || !settings.model) {
+      return false;
+    }
+    if (settings.provider === "openai-compatible" && !settings.endpoint) {
+      return false;
+    }
+    return true;
+  };
+
+  // 验证测试连接（不需要 model）
+  const isTestConnectionValid = () => {
+    if (!settings.provider || !settings.apiKey) {
       return false;
     }
     if (settings.provider === "openai-compatible" && !settings.endpoint) {
@@ -435,7 +463,8 @@ export function AIConfigurationDialog({
                         type="button"
                         variant="outline"
                         onClick={testConnection}
-                        disabled={!isFormValid() || isTestingConnection}
+                        disabled={!isTestConnectionValid() ||
+                          isTestingConnection}
                         className="flex-1 bg-transparent hover:bg-accent/80 transition-colors rounded-md"
                       >
                         {isTestingConnection

@@ -18,14 +18,14 @@ export function RuleEditor({
     highlightedLine,
 }: RuleEditorProps) {
     return (
-        <div className="h-full">
+        <div className="h-full flex flex-col">
             <ClashRuleEditor
                 value={rules}
                 onChange={onRulesChange}
                 highlightedLine={highlightedLine}
-                className="h-full"
-                minHeight={300}
-                maxHeight={800}
+                className="flex-1"
+                minHeight={200}
+                maxHeight={99999} // 移除高度限制，让编辑器填满容器
                 placeholder="# 在此输入 Clash 规则
 # 例如：
 DOMAIN-SUFFIX,google.com,PROXY
