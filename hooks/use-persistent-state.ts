@@ -17,10 +17,16 @@ export function usePersistentState<K extends keyof StorageData>(
   defaultValue: StorageData[K],
   debounceMs: number = 500,
 ): [StorageData[K], (value: StorageData[K]) => void] {
-  // 初始化状态
-  const [state, setState] = useState<StorageData[K]>(() => {
-    return storage.get(key, defaultValue);
-  });
+  // 初始化状态 - 避免 SSR 不一致
+  const [state, setState] = useState<StorageData[K]>(defaultValue);
+  const [isClient, setIsClient] = useState(false);
+
+  // 在客户端加载存储的值
+  useEffect(() => {
+    setIsClient(true);
+    const storedValue = storage.get(key, defaultValue);
+    setState(storedValue);
+  }, [key, defaultValue]);
 
   // 防抖保存到 localStorage
   const debouncedSave = useCallback(
@@ -33,8 +39,10 @@ export function usePersistentState<K extends keyof StorageData>(
   // 更新状态并保存
   const updateState = useCallback((value: StorageData[K]) => {
     setState(value);
-    debouncedSave(value);
-  }, [debouncedSave]);
+    if (isClient) {
+      debouncedSave(value);
+    }
+  }, [debouncedSave, isClient]);
 
   // 监听其他标签页的变化
   useEffect(() => {

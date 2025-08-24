@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { History, Timer } from "lucide-react";
 import type { MatchResult, TestRequest } from "@/lib/clash-rule-engine";
@@ -17,6 +18,19 @@ interface TestHistoryProps {
 }
 
 export function TestHistory({ testHistory }: TestHistoryProps) {
+    // 客户端状态管理，避免 SSR 不一致
+    const [displayHistory, setDisplayHistory] = useState<TestHistory[]>([]);
+    const [isClient, setIsClient] = useState(false);
+
+    // 在客户端更新历史记录
+    useEffect(() => {
+        setIsClient(true);
+        setDisplayHistory(testHistory);
+    }, [testHistory]);
+
+    // 如果还在服务端渲染，使用空数组
+    const history = isClient ? displayHistory : [];
+
     return (
         <div className="bg-card border border-border rounded-lg">
             <div className="p-4 border-b border-border">
@@ -27,14 +41,14 @@ export function TestHistory({ testHistory }: TestHistoryProps) {
             </div>
             <div className="p-4">
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {testHistory.length === 0
+                    {history.length === 0
                         ? (
                             <div className="text-center text-muted-foreground text-sm py-8">
                                 暂无测试历史
                             </div>
                         )
                         : (
-                            testHistory.map((entry) => (
+                            history.map((entry) => (
                                 <div
                                     key={entry.id}
                                     className="p-2 bg-muted/30 rounded-md hover:bg-muted/50 transition-colors text-xs"
