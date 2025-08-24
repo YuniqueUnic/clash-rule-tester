@@ -52,6 +52,13 @@ import {
   type TestMetrics as TestMetricsType,
 } from "@/lib/clash-data-sources";
 import { AIService } from "@/lib/ai-service";
+import {
+  usePersistentEditorContent,
+  usePersistentTestHistory,
+  usePersistentTestMetrics,
+  usePersistentTestParams,
+  usePersistentUIState,
+} from "@/hooks/use-persistent-state";
 
 // 导入新的组件
 import { QuickRuleCreator } from "@/components/left-column/quick-rule-creator";
@@ -124,8 +131,8 @@ function ClashRuleTester() {
     importPolicies,
   } = useDataContext();
 
-  // 核心状态
-  const [rules, setRules] = useState(SAMPLE_RULES);
+  // 核心状态 - 使用持久化存储
+  const [rules, setRules] = usePersistentEditorContent(SAMPLE_RULES);
   const ruleEngine = useState(() => new ClashRuleEngine(rules))[0];
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
   const [matchResultExpanded, setMatchResultExpanded] = useState(true);
@@ -143,19 +150,59 @@ function ClashRuleTester() {
 
   // 策略管理现在通过 DataContext 处理
 
-  // 测试数据状态
-  const [testDomain, setTestDomain] = useState("www.google.com");
-  const [testSrcIPv4, setTestSrcIPv4] = useState("192.168.1.100");
-  const [testSrcIPv6, setTestSrcIPv6] = useState("2001:db8::1");
-  const [testSrcPort, setTestSrcPort] = useState("12345");
-  const [testDstIPv4, setTestDstIPv4] = useState("8.8.8.8");
-  const [testDstIPv6, setTestDstIPv6] = useState("2001:4860:4860::8888");
-  const [testDstPort, setTestDstPort] = useState("443");
-  const [testProcess, setTestProcess] = useState("chrome.exe");
-  const [testProcessPath, setTestProcessPath] = useState("/usr/bin/chrome");
-  const [testGeoIP, setTestGeoIP] = useState("US");
-  const [testNetwork, setTestNetwork] = useState("tcp");
-  const [testUID, setTestUID] = useState("1000");
+  // 测试数据状态 - 使用持久化存储
+  const [testParams, setTestParams] = usePersistentTestParams({
+    domain: "www.google.com",
+    srcIPv4: "192.168.1.100",
+    srcIPv6: "2001:db8::1",
+    srcPort: "12345",
+    dstIPv4: "8.8.8.8",
+    dstIPv6: "2001:4860:4860::8888",
+    dstPort: "443",
+    process: "chrome.exe",
+    processPath: "/usr/bin/chrome",
+    geoIP: "US",
+    network: "tcp",
+    uid: "1000",
+  });
+
+  // 为了兼容现有代码，创建单独的 getter 和 setter
+  const testDomain = testParams.domain;
+  const setTestDomain = (value: string) =>
+    setTestParams({ ...testParams, domain: value });
+  const testSrcIPv4 = testParams.srcIPv4;
+  const setTestSrcIPv4 = (value: string) =>
+    setTestParams({ ...testParams, srcIPv4: value });
+  const testSrcIPv6 = testParams.srcIPv6;
+  const setTestSrcIPv6 = (value: string) =>
+    setTestParams({ ...testParams, srcIPv6: value });
+  const testSrcPort = testParams.srcPort;
+  const setTestSrcPort = (value: string) =>
+    setTestParams({ ...testParams, srcPort: value });
+  const testDstIPv4 = testParams.dstIPv4;
+  const setTestDstIPv4 = (value: string) =>
+    setTestParams({ ...testParams, dstIPv4: value });
+  const testDstIPv6 = testParams.dstIPv6;
+  const setTestDstIPv6 = (value: string) =>
+    setTestParams({ ...testParams, dstIPv6: value });
+  const testDstPort = testParams.dstPort;
+  const setTestDstPort = (value: string) =>
+    setTestParams({ ...testParams, dstPort: value });
+  const testProcess = testParams.process;
+  const setTestProcess = (value: string) =>
+    setTestParams({ ...testParams, process: value });
+  const testProcessPath = testParams.processPath;
+  const setTestProcessPath = (value: string) =>
+    setTestParams({ ...testParams, processPath: value });
+  const testGeoIP = testParams.geoIP;
+  const setTestGeoIP = (value: string) =>
+    setTestParams({ ...testParams, geoIP: value });
+  const testNetwork = testParams.network;
+  const setTestNetwork = (value: string) =>
+    setTestParams({ ...testParams, network: value });
+  const testUID = testParams.uid;
+  const setTestUID = (value: string) =>
+    setTestParams({ ...testParams, uid: value });
 
   // GeoIP、GeoSite 和 ASN 数据现在通过 DataContext 管理
   // 为了兼容现有组件，创建映射，只使用已启用的数据
@@ -197,9 +244,9 @@ function ClashRuleTester() {
     null,
   );
 
-  // 测试历史和指标
-  const [testHistory, setTestHistory] = useState<TestHistory[]>([]);
-  const [testMetrics, setTestMetrics] = useState<TestMetricsType>(
+  // 测试历史和指标 - 使用持久化存储
+  const [testHistory, setTestHistory] = usePersistentTestHistory([]);
+  const [testMetrics, setTestMetrics] = usePersistentTestMetrics(
     DEFAULT_TEST_METRICS,
   );
 
@@ -293,23 +340,23 @@ function ClashRuleTester() {
         duration,
       };
 
-      setTestHistory((prev) => [historyEntry, ...prev.slice(0, 49)]); // 保留最近 50 条
+      setTestHistory([historyEntry, ...testHistory.slice(0, 49)]); // 保留最近 50 条
 
       // 更新测试指标
-      setTestMetrics((prev: TestMetricsType) => {
-        const newTotalTests = prev.totalTests + 1;
-        const newAverageTime = (prev.averageTime * prev.totalTests + duration) /
-          newTotalTests;
-        const newSuccessRate = result
-          ? (prev.successRate * prev.totalTests + 100) / newTotalTests
-          : (prev.successRate * prev.totalTests) / newTotalTests;
+      const newTotalTests = testMetrics.totalTests + 1;
+      const newAverageTime =
+        (testMetrics.averageTime * testMetrics.totalTests + duration) /
+        newTotalTests;
+      const newSuccessRate = result
+        ? (testMetrics.successRate * testMetrics.totalTests + 100) /
+          newTotalTests
+        : (testMetrics.successRate * testMetrics.totalTests) / newTotalTests;
 
-        return {
-          totalTests: newTotalTests,
-          averageTime: newAverageTime,
-          successRate: newSuccessRate,
-          lastTestTime: duration,
-        };
+      setTestMetrics({
+        totalTests: newTotalTests,
+        averageTime: newAverageTime,
+        successRate: newSuccessRate,
+        lastTestTime: Date.now(),
       });
     } catch (error) {
       console.error("Test failed:", error);
@@ -391,7 +438,7 @@ function ClashRuleTester() {
   // 添加快速规则函数
   const addQuickRule = (ruleType: string, content: string, policy: string) => {
     const newRule = `${ruleType},${content},${policy}`;
-    setRules((prev) => prev + "\n" + newRule);
+    setRules(rules + "\n" + newRule);
     toast({
       title: "规则已添加",
       description: "新规则已添加到配置中。",
@@ -708,6 +755,8 @@ function ClashRuleTester() {
                 rules={rules}
                 onRulesChange={setRules}
                 highlightedLine={highlightedLine}
+                isAIOptimizing={isOptimizing}
+                onStopAIOptimization={() => setIsOptimizing(false)}
               />
             </Panel>
 

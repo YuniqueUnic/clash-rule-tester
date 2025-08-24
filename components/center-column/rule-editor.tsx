@@ -6,6 +6,10 @@ interface RuleEditorProps {
     rules: string;
     onRulesChange: (rules: string) => void;
     highlightedLine?: number;
+    /** AI 优化状态 */
+    isAIOptimizing?: boolean;
+    /** 停止 AI 优化的回调 */
+    onStopAIOptimization?: () => void;
 }
 
 /**
@@ -16,6 +20,8 @@ export function RuleEditor({
     rules,
     onRulesChange,
     highlightedLine,
+    isAIOptimizing = false,
+    onStopAIOptimization,
 }: RuleEditorProps) {
     return (
         <div className="h-full flex flex-col">
@@ -26,6 +32,8 @@ export function RuleEditor({
                 className="flex-1"
                 minHeight={200}
                 maxHeight={99999} // 移除高度限制，让编辑器填满容器
+                isAIOptimizing={isAIOptimizing}
+                onStopAIOptimization={onStopAIOptimization}
                 placeholder="# 在此输入 Clash 规则
 # 例如：
 DOMAIN-SUFFIX,google.com,PROXY
