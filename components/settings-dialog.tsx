@@ -40,6 +40,36 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { DataManager } from "@/components/data-management/data-manager";
+import {
+  PolicyAddForm,
+  PolicyEditForm,
+} from "@/components/data-management/policy-forms";
+import {
+  GeoIPAddForm,
+  GeoIPEditForm,
+} from "@/components/data-management/geoip-forms";
+import {
+  NetworkTypeAddForm,
+  NetworkTypeEditForm,
+} from "@/components/data-management/network-forms";
+import {
+  GeoSiteAddForm,
+  GeoSiteEditForm,
+} from "@/components/data-management/geosite-forms";
+import {
+  ASNAddForm,
+  ASNBulkImportForm,
+  ASNEditForm,
+} from "@/components/data-management/asn-forms";
+import { ColumnDef } from "@tanstack/react-table";
+import {
+  GeoIPCountryData,
+  GEOSITE_CATEGORIES,
+  IP_TO_ASN_MAP,
+  NetworkTypeData,
+  PolicyData,
+} from "@/lib/clash-data-sources";
 
 interface AISettings {
   provider: "openai" | "gemini" | "openai-compatible" | "";
@@ -48,11 +78,83 @@ interface AISettings {
   endpoint?: string;
 }
 
-interface SettingsDialogProps {
-  onSettingsChange: (settings: AISettings) => void;
+// 数据管理相关接口
+interface PolicyItem extends PolicyData {
+  id: string;
 }
 
-export function SettingsDialog({ onSettingsChange }: SettingsDialogProps) {
+interface GeoIPItem extends GeoIPCountryData {
+  id: string;
+}
+
+interface NetworkTypeItem extends NetworkTypeData {
+  id: string;
+}
+
+interface GeoSiteItem {
+  id: string;
+  category: string;
+  domains: string[];
+}
+
+interface ASNItem {
+  id: string;
+  ip: string;
+  asn: string;
+}
+
+interface SettingsDialogProps {
+  onSettingsChange: (settings: AISettings) => void;
+  // 数据管理相关props
+  policies?: PolicyItem[];
+  geoIPCountries?: GeoIPItem[];
+  networkTypes?: NetworkTypeItem[];
+  geoSiteData?: GeoSiteItem[];
+  asnData?: ASNItem[];
+  // 数据管理回调
+  onPolicyAdd?: (policy: Omit<PolicyItem, "id">) => void;
+  onPolicyEdit?: (id: string, policy: Partial<PolicyItem>) => void;
+  onPolicyDelete?: (id: string) => void;
+  onGeoIPAdd?: (country: Omit<GeoIPItem, "id">) => void;
+  onGeoIPEdit?: (id: string, country: Partial<GeoIPItem>) => void;
+  onGeoIPDelete?: (id: string) => void;
+  onNetworkTypeAdd?: (networkType: Omit<NetworkTypeItem, "id">) => void;
+  onNetworkTypeEdit?: (
+    id: string,
+    networkType: Partial<NetworkTypeItem>,
+  ) => void;
+  onNetworkTypeDelete?: (id: string) => void;
+  onGeoSiteAdd?: (geoSite: Omit<GeoSiteItem, "id">) => void;
+  onGeoSiteEdit?: (id: string, geoSite: Partial<GeoSiteItem>) => void;
+  onGeoSiteDelete?: (id: string) => void;
+  onASNAdd?: (asn: Omit<ASNItem, "id">) => void;
+  onASNEdit?: (id: string, asn: Partial<ASNItem>) => void;
+  onASNDelete?: (id: string) => void;
+}
+
+export function SettingsDialog({
+  onSettingsChange,
+  policies = [],
+  geoIPCountries = [],
+  networkTypes = [],
+  geoSiteData = [],
+  asnData = [],
+  onPolicyAdd,
+  onPolicyEdit,
+  onPolicyDelete,
+  onGeoIPAdd,
+  onGeoIPEdit,
+  onGeoIPDelete,
+  onNetworkTypeAdd,
+  onNetworkTypeEdit,
+  onNetworkTypeDelete,
+  onGeoSiteAdd,
+  onGeoSiteEdit,
+  onGeoSiteDelete,
+  onASNAdd,
+  onASNEdit,
+  onASNDelete,
+}: SettingsDialogProps) {
   const [open, setOpen] = useState(false);
   const [settings, setSettings] = useState<AISettings>({
     provider: "",
@@ -336,9 +438,14 @@ export function SettingsDialog({ onSettingsChange }: SettingsDialogProps) {
 
         {/* TODO: 结构化这部分组件，将 Tabs 和 TabsContent 拆分为单独的组件到新文件 (夹) 中。*/}
         <Tabs defaultValue="basic" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="basic">基础配置</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-7">
+            <TabsTrigger value="basic">AI配置</TabsTrigger>
             <TabsTrigger value="models">模型管理</TabsTrigger>
+            <TabsTrigger value="policies">策略管理</TabsTrigger>
+            <TabsTrigger value="geoip">GeoIP</TabsTrigger>
+            <TabsTrigger value="networks">网络类型</TabsTrigger>
+            <TabsTrigger value="geosite">GeoSite</TabsTrigger>
+            <TabsTrigger value="asn">ASN数据</TabsTrigger>
           </TabsList>
 
           <TabsContent value="basic" className="space-y-6">
@@ -647,6 +754,282 @@ export function SettingsDialog({ onSettingsChange }: SettingsDialogProps) {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* 策略管理 */}
+          <TabsContent value="policies" className="space-y-6">
+            <DataManager
+              config={{
+                title: "策略管理",
+                description:
+                  "管理Clash规则中使用的策略，包括内置策略和自定义策略",
+                columns: [
+                  {
+                    accessorKey: "name",
+                    header: "策略名称",
+                  },
+                  {
+                    accessorKey: "type",
+                    header: "类型",
+                    cell: ({ row }) => (
+                      <Badge
+                        variant={row.original.type === "built-in"
+                          ? "default"
+                          : "secondary"}
+                      >
+                        {row.original.type === "built-in" ? "内置" : "自定义"}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    accessorKey: "category",
+                    header: "分类",
+                  },
+                  {
+                    accessorKey: "description",
+                    header: "描述",
+                  },
+                ] as ColumnDef<PolicyItem>[],
+                searchPlaceholder: "搜索策略名称或描述...",
+                emptyMessage: "暂无策略数据",
+                allowAdd: true,
+                allowEdit: true,
+                allowDelete: true,
+                allowImport: true,
+                allowExport: true,
+              }}
+              data={policies}
+              onAdd={onPolicyAdd}
+              onEdit={onPolicyEdit}
+              onDelete={onPolicyDelete}
+              renderAddForm={(onSubmit, onCancel) => (
+                <PolicyAddForm onSubmit={onSubmit} onCancel={onCancel} />
+              )}
+              renderEditForm={(item, onSubmit, onCancel) => (
+                <PolicyEditForm
+                  policy={item}
+                  onSubmit={onSubmit}
+                  onCancel={onCancel}
+                />
+              )}
+            />
+          </TabsContent>
+
+          {/* GeoIP国家管理 */}
+          <TabsContent value="geoip" className="space-y-6">
+            <DataManager
+              config={{
+                title: "GeoIP国家数据",
+                description: "管理用于地理位置规则的国家代码和信息",
+                columns: [
+                  {
+                    accessorKey: "code",
+                    header: "国家代码",
+                  },
+                  {
+                    accessorKey: "name",
+                    header: "国家名称",
+                  },
+                  {
+                    accessorKey: "continent",
+                    header: "大洲",
+                  },
+                  {
+                    accessorKey: "popular",
+                    header: "热门",
+                    cell: ({ row }) => (
+                      <Badge
+                        variant={row.original.popular ? "default" : "outline"}
+                      >
+                        {row.original.popular ? "是" : "否"}
+                      </Badge>
+                    ),
+                  },
+                ] as ColumnDef<GeoIPItem>[],
+                searchPlaceholder: "搜索国家代码或名称...",
+                emptyMessage: "暂无GeoIP数据",
+                allowAdd: true,
+                allowEdit: true,
+                allowDelete: true,
+                allowImport: true,
+                allowExport: true,
+              }}
+              data={geoIPCountries}
+              onAdd={onGeoIPAdd}
+              onEdit={onGeoIPEdit}
+              onDelete={onGeoIPDelete}
+              renderAddForm={(onSubmit, onCancel) => (
+                <GeoIPAddForm onSubmit={onSubmit} onCancel={onCancel} />
+              )}
+              renderEditForm={(item, onSubmit, onCancel) => (
+                <GeoIPEditForm
+                  country={item}
+                  onSubmit={onSubmit}
+                  onCancel={onCancel}
+                />
+              )}
+            />
+          </TabsContent>
+
+          {/* 网络类型管理 */}
+          <TabsContent value="networks" className="space-y-6">
+            <DataManager
+              config={{
+                title: "网络类型管理",
+                description: "管理网络协议类型，用于网络规则匹配",
+                columns: [
+                  {
+                    accessorKey: "type",
+                    header: "协议类型",
+                  },
+                  {
+                    accessorKey: "category",
+                    header: "分类",
+                    cell: ({ row }) => {
+                      const categoryMap = {
+                        transport: "传输层",
+                        application: "应用层",
+                        tunnel: "隧道协议",
+                      };
+                      return (
+                        <Badge variant="outline">
+                          {categoryMap[
+                            row.original.category as keyof typeof categoryMap
+                          ]}
+                        </Badge>
+                      );
+                    },
+                  },
+                  {
+                    accessorKey: "description",
+                    header: "描述",
+                  },
+                ] as ColumnDef<NetworkTypeItem>[],
+                searchPlaceholder: "搜索协议类型或描述...",
+                emptyMessage: "暂无网络类型数据",
+                allowAdd: true,
+                allowEdit: true,
+                allowDelete: true,
+                allowImport: true,
+                allowExport: true,
+              }}
+              data={networkTypes}
+              onAdd={onNetworkTypeAdd}
+              onEdit={onNetworkTypeEdit}
+              onDelete={onNetworkTypeDelete}
+              renderAddForm={(onSubmit, onCancel) => (
+                <NetworkTypeAddForm onSubmit={onSubmit} onCancel={onCancel} />
+              )}
+              renderEditForm={(item, onSubmit, onCancel) => (
+                <NetworkTypeEditForm
+                  networkType={item}
+                  onSubmit={onSubmit}
+                  onCancel={onCancel}
+                />
+              )}
+            />
+          </TabsContent>
+
+          {/* GeoSite管理 */}
+          <TabsContent value="geosite" className="space-y-6">
+            <DataManager
+              config={{
+                title: "GeoSite域名分类",
+                description: "管理域名分类，用于基于网站类别的规则匹配",
+                columns: [
+                  {
+                    accessorKey: "category",
+                    header: "分类名称",
+                  },
+                  {
+                    accessorKey: "domains",
+                    header: "域名数量",
+                    cell: ({ row }) => (
+                      <Badge variant="secondary">
+                        {row.original.domains.length} 个域名
+                      </Badge>
+                    ),
+                  },
+                  {
+                    id: "preview",
+                    header: "域名预览",
+                    cell: ({ row }) => (
+                      <div className="max-w-xs truncate text-sm text-muted-foreground">
+                        {row.original.domains.slice(0, 3).join(", ")}
+                        {row.original.domains.length > 3 && "..."}
+                      </div>
+                    ),
+                  },
+                ] as ColumnDef<GeoSiteItem>[],
+                searchPlaceholder: "搜索分类名称...",
+                emptyMessage: "暂无GeoSite数据",
+                allowAdd: true,
+                allowEdit: true,
+                allowDelete: true,
+                allowImport: true,
+                allowExport: true,
+              }}
+              data={geoSiteData}
+              onAdd={onGeoSiteAdd}
+              onEdit={onGeoSiteEdit}
+              onDelete={onGeoSiteDelete}
+              renderAddForm={(onSubmit, onCancel) => (
+                <GeoSiteAddForm onSubmit={onSubmit} onCancel={onCancel} />
+              )}
+              renderEditForm={(item, onSubmit, onCancel) => (
+                <GeoSiteEditForm
+                  geosite={item}
+                  onSubmit={onSubmit}
+                  onCancel={onCancel}
+                />
+              )}
+            />
+          </TabsContent>
+
+          {/* ASN数据管理 */}
+          <TabsContent value="asn" className="space-y-6">
+            <DataManager
+              config={{
+                title: "ASN数据管理",
+                description: "管理IP地址到自治系统编号(ASN)的映射关系",
+                columns: [
+                  {
+                    accessorKey: "ip",
+                    header: "IP地址",
+                  },
+                  {
+                    accessorKey: "asn",
+                    header: "ASN编号",
+                    cell: ({ row }) => (
+                      <Badge variant="outline">
+                        {row.original.asn}
+                      </Badge>
+                    ),
+                  },
+                ] as ColumnDef<ASNItem>[],
+                searchPlaceholder: "搜索IP地址或ASN...",
+                emptyMessage: "暂无ASN数据",
+                allowAdd: true,
+                allowEdit: true,
+                allowDelete: true,
+                allowImport: true,
+                allowExport: true,
+              }}
+              data={asnData}
+              onAdd={onASNAdd}
+              onEdit={onASNEdit}
+              onDelete={onASNDelete}
+              renderAddForm={(onSubmit, onCancel) => (
+                <ASNAddForm onSubmit={onSubmit} onCancel={onCancel} />
+              )}
+              renderEditForm={(item, onSubmit, onCancel) => (
+                <ASNEditForm
+                  asnData={item}
+                  onSubmit={onSubmit}
+                  onCancel={onCancel}
+                />
+              )}
+            />
           </TabsContent>
         </Tabs>
 
