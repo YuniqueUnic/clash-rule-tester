@@ -1,6 +1,7 @@
 import { generateText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { getAIServiceConfig } from "./env-config";
 
 interface AISettings {
@@ -18,6 +19,12 @@ export class AIService {
   }
 
   private getModel() {
+    if (
+      !this.settings.provider || !this.settings.apiKey || !this.settings.model
+    ) {
+      throw new Error("AI service not properly configured");
+    }
+
     switch (this.settings.provider) {
       case "openai": {
         // 为 OpenAI 创建自定义实例
@@ -34,15 +41,21 @@ export class AIService {
         return customGoogle(this.settings.model);
       }
       case "openai-compatible": {
-        // 为 OpenAI 兼容的 API 创建自定义实例
-        const customOpenAI = createOpenAI({
+        if (!this.settings.endpoint) {
+          throw new Error(
+            "Endpoint is required for OpenAI-compatible providers",
+          );
+        }
+        // 为 OpenAI 兼容的 API 创建专用实例
+        const compatibleProvider = createOpenAICompatible({
+          name: "openai-compatible",
           apiKey: this.settings.apiKey,
           baseURL: this.settings.endpoint,
         });
-        return customOpenAI(this.settings.model);
+        return compatibleProvider(this.settings.model);
       }
       default:
-        throw new Error("Unsupported AI provider");
+        throw new Error(`Unsupported AI provider: ${this.settings.provider}`);
     }
   }
 
@@ -107,16 +120,32 @@ ${rules}
 请用通俗易懂的语言解释，适合初学者和高级用户。`;
 
     try {
+      console.log("AI Service - Starting explanation with settings:", {
+        provider: this.settings.provider,
+        model: this.settings.model,
+        hasApiKey: !!this.settings.apiKey,
+        hasEndpoint: !!this.settings.endpoint,
+      });
+
+      const model = this.getModel();
+      console.log("AI Service - Model created successfully");
+
       const { text } = await generateText({
-        model: this.getModel(),
+        model,
         prompt,
-        // maxTokens: 800,
         temperature: 0.2,
       });
 
+      console.log("AI Service - Text generated successfully");
       return text;
     } catch (error) {
       console.error("AI explanation failed:", error);
+      console.error("Error details:", {
+        name: error instanceof Error ? error.name : "Unknown",
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
       throw new Error(
         `AI 解释失败：${error instanceof Error ? error.message : "未知错误"}`,
       );
@@ -225,6 +254,48 @@ ${rules}
         return "OpenAI Compatible";
       default:
         return "未配置";
+    }
+  }
+
+  async testConnection(): Promise<{ success: boolean; error?: string }> {
+    if (!this.isConfigured()) {
+      return {
+        success: false,
+        error: "AI service not configured",
+      };
+    }
+
+    try {
+      console.log("Testing AI connection with settings:", {
+        provider: this.settings.provider,
+        model: this.settings.model,
+        hasApiKey: !!this.settings.apiKey,
+        hasEndpoint: !!this.settings.endpoint,
+      });
+
+      const model = this.getModel();
+      console.log("Model created successfully for testing");
+
+      // 发送一个简单的测试请求
+      const { text } = await generateText({
+        model,
+        prompt: "Hello",
+        temperature: 0,
+      });
+
+      console.log("Test request successful, response:", text?.slice(0, 50));
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Connection test failed:", error);
+
+      const errorMessage = error instanceof Error ? error.message : "未知错误";
+      return {
+        success: false,
+        error: errorMessage,
+      };
     }
   }
 }

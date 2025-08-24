@@ -39,6 +39,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AIService } from "@/lib/ai-service";
 
 // AI 配置相关的类型定义
 interface AISettings {
@@ -187,12 +188,16 @@ export function AIConfigurationDialog({
     setConnectionError("");
 
     try {
-      // 这里应该调用实际的 API 测试
-      // 暂时模拟测试过程
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // 创建 AI 服务实例进行真实测试
+      const aiService = new AIService(settings);
+      const result = await aiService.testConnection();
 
-      // 模拟成功
-      setConnectionStatus("success");
+      if (result.success) {
+        setConnectionStatus("success");
+      } else {
+        setConnectionStatus("error");
+        setConnectionError(result.error || "连接测试失败");
+      }
     } catch (error) {
       setConnectionStatus("error");
       setConnectionError(error instanceof Error ? error.message : "未知错误");

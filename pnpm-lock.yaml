@@ -14,6 +14,9 @@ importers:
       '@ai-sdk/openai':
         specifier: latest
         version: 2.0.19(zod@4.0.17)
+      '@ai-sdk/openai-compatible':
+        specifier: ^1.0.11
+        version: 1.0.11(zod@4.0.17)
       '@codemirror/autocomplete':
         specifier: ^6.18.6
         version: 6.18.6
@@ -236,6 +239,12 @@ packages:
 
   '@ai-sdk/google@2.0.8':
     resolution: {integrity: sha512-k+5SLtoV0qG4rSCxwWQ+/0qrJFXwYHQ1TcH4GyaP4X0qOuVS4NDtD8ymSu8ej0ejFluogtBfTLev7sbj2AnJzA==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4
+
+  '@ai-sdk/openai-compatible@1.0.11':
+    resolution: {integrity: sha512-eRD6dZviy31KYz4YvxAR/c6UEYx3p4pCiWZeDdYdAHj0rn8xZlGVxtQRs1qynhz6IYGOo4aLBf9zVW5w0tI/Uw==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4
@@ -1902,6 +1911,12 @@ snapshots:
       zod: 4.0.17
 
   '@ai-sdk/google@2.0.8(zod@4.0.17)':
+    dependencies:
+      '@ai-sdk/provider': 2.0.0
+      '@ai-sdk/provider-utils': 3.0.5(zod@4.0.17)
+      zod: 4.0.17
+
+  '@ai-sdk/openai-compatible@1.0.11(zod@4.0.17)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
       '@ai-sdk/provider-utils': 3.0.5(zod@4.0.17)
