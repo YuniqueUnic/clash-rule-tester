@@ -24,8 +24,13 @@ export function usePersistentState<K extends keyof StorageData>(
   // 在客户端加载存储的值
   useEffect(() => {
     setIsClient(true);
-    const storedValue = storage.get(key, defaultValue);
-    setState(storedValue);
+    // 尝试获取存储的值，不传入 defaultValue
+    const storedValue = storage.get(key);
+    // 只有当存储值确实存在时才更新状态
+    if (storedValue !== undefined) {
+      setState(storedValue);
+    }
+    // 如果没有存储值，保持当前的 defaultValue 状态
   }, [key]); // 移除 defaultValue 依赖，避免无限循环
 
   // 防抖保存到 localStorage
@@ -164,6 +169,19 @@ export function usePersistentAILastMatchResult(defaultResult: any = null) {
     STORAGE_KEYS.AI_LAST_MATCH_RESULT,
     defaultResult,
     1000,
+  );
+}
+
+/**
+ * 编辑器高亮行持久化 Hook
+ */
+export function usePersistentHighlightedLine(
+  defaultLine: number | null = null,
+) {
+  return usePersistentState(
+    STORAGE_KEYS.EDITOR_HIGHLIGHTED_LINE,
+    defaultLine,
+    500,
   );
 }
 

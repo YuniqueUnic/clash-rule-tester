@@ -124,51 +124,103 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 const generateId = () =>
   Date.now().toString() + Math.random().toString(36).substr(2, 9);
 
+// 基于名称生成ID的工具函数
+const generateIdFromName = (
+  name: string,
+  existingIds: string[] = [],
+): string => {
+  // 1. 处理特殊字符，转换为安全的ID格式
+  let id = name
+    .toLowerCase() // 转换为小写
+    .trim() // 去除首尾空格
+    .replace(/\s+/g, "-") // 空格替换为连字符
+    .replace(/[^a-z0-9\-]/g, "") // 只保留字母、数字、连字符
+    .replace(/--+/g, "-") // 多个连字符合并为一个
+    .replace(/^-+|-+$/g, ""); // 去除首尾连字符
+
+  // 2. 如果处理后为空，使用默认前缀
+  if (!id) {
+    id = "item";
+  }
+
+  // 3. 检查唯一性，如果重复则添加数字后缀
+  let finalId = id;
+  let counter = 1;
+  while (existingIds.includes(finalId)) {
+    finalId = `${id}-${counter}`;
+    counter++;
+  }
+
+  return finalId;
+};
+
 // 初始化数据的工具函数
 const initializePolicies = (): PolicyItem[] => {
-  return BUILT_IN_POLICIES.map((policy, index) => ({
-    ...policy,
-    id: `policy-${index}`,
-    createdAt: Date.now() + index,
-    enabled: true, // 默认启用
-  }));
+  const existingIds: string[] = [];
+  return BUILT_IN_POLICIES.map((policy, index) => {
+    const id = generateIdFromName(policy.name, existingIds);
+    existingIds.push(id);
+    return {
+      ...policy,
+      id,
+      createdAt: Date.now() + index,
+      enabled: true, // 默认启用
+    };
+  });
 };
 
 const initializeGeoIP = (): GeoIPItem[] => {
-  return GEOIP_COUNTRIES.map((country, index) => ({
-    ...country,
-    id: `geoip-${index}`,
-    enabled: true, // 默认启用
-  }));
+  const existingIds: string[] = [];
+  return GEOIP_COUNTRIES.map((country) => {
+    const id = generateIdFromName(country.code, existingIds);
+    existingIds.push(id);
+    return {
+      ...country,
+      id,
+      enabled: true, // 默认启用
+    };
+  });
 };
 
 const initializeNetworkTypes = (): NetworkTypeItem[] => {
-  return NETWORK_TYPES.map((networkType, index) => ({
-    ...networkType,
-    id: `network-${index}`,
-    enabled: true, // 默认启用
-  }));
+  const existingIds: string[] = [];
+  return NETWORK_TYPES.map((networkType) => {
+    const id = generateIdFromName(networkType.type, existingIds);
+    existingIds.push(id);
+    return {
+      ...networkType,
+      id,
+      enabled: true, // 默认启用
+    };
+  });
 };
 
 const initializeGeoSite = (): GeoSiteItem[] => {
-  return Object.entries(GEOSITE_CATEGORIES).map((
-    [category, domains],
-    index,
-  ) => ({
-    id: `geosite-${index}`,
-    category,
-    domains,
-    enabled: true, // 默认启用
-  }));
+  const existingIds: string[] = [];
+  return Object.entries(GEOSITE_CATEGORIES).map(([category, domains]) => {
+    const id = generateIdFromName(category, existingIds);
+    existingIds.push(id);
+    return {
+      id,
+      category,
+      domains,
+      enabled: true, // 默认启用
+    };
+  });
 };
 
 const initializeASN = (): ASNItem[] => {
-  return Object.entries(IP_TO_ASN_MAP).map(([ip, asn], index) => ({
-    id: `asn-${index}`,
-    ip,
-    asn,
-    enabled: true, // 默认启用
-  }));
+  const existingIds: string[] = [];
+  return Object.entries(IP_TO_ASN_MAP).map(([ip, asn]) => {
+    const id = generateIdFromName(`${ip}-${asn}`, existingIds);
+    existingIds.push(id);
+    return {
+      id,
+      ip,
+      asn,
+      enabled: true, // 默认启用
+    };
+  });
 };
 
 // Provider 组件
@@ -253,12 +305,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // 策略管理函数
   const addPolicy = useCallback((policy: Omit<PolicyItem, "id">) => {
-    const newPolicy: PolicyItem = {
-      ...policy,
-      id: generateId(),
-      createdAt: Date.now(),
-    };
-    setPolicies((prev) => [...prev, newPolicy]);
+    setPolicies((prev) => {
+      const existingIds = prev.map((p) => p.id);
+      const id = generateIdFromName(policy.name, existingIds);
+      const newPolicy: PolicyItem = {
+        ...policy,
+        id,
+        createdAt: Date.now(),
+      };
+      return [...prev, newPolicy];
+    });
   }, []);
 
   const updatePolicy = useCallback(
@@ -276,11 +332,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // GeoIP 管理函数
   const addGeoIP = useCallback((country: Omit<GeoIPItem, "id">) => {
-    const newCountry: GeoIPItem = {
-      ...country,
-      id: generateId(),
-    };
-    setGeoIPCountries((prev) => [...prev, newCountry]);
+    setGeoIPCountries((prev) => {
+      const existingIds = prev.map((c) => c.id);
+      const id = generateIdFromName(country.code, existingIds);
+      const newCountry: GeoIPItem = {
+        ...country,
+        id,
+      };
+      return [...prev, newCountry];
+    });
   }, []);
 
   const updateGeoIP = useCallback((id: string, country: Partial<GeoIPItem>) => {
@@ -296,11 +356,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // 网络类型管理函数
   const addNetworkType = useCallback(
     (networkType: Omit<NetworkTypeItem, "id">) => {
-      const newNetworkType: NetworkTypeItem = {
-        ...networkType,
-        id: generateId(),
-      };
-      setNetworkTypes((prev) => [...prev, newNetworkType]);
+      setNetworkTypes((prev) => {
+        const existingIds = prev.map((n) => n.id);
+        const id = generateIdFromName(networkType.type, existingIds);
+        const newNetworkType: NetworkTypeItem = {
+          ...networkType,
+          id,
+        };
+        return [...prev, newNetworkType];
+      });
     },
     [],
   );
@@ -320,11 +384,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // GeoSite 管理函数
   const addGeoSite = useCallback((geoSite: Omit<GeoSiteItem, "id">) => {
-    const newGeoSite: GeoSiteItem = {
-      ...geoSite,
-      id: generateId(),
-    };
-    setGeoSiteData((prev) => [...prev, newGeoSite]);
+    setGeoSiteData((prev) => {
+      const existingIds = prev.map((g) => g.id);
+      const id = generateIdFromName(geoSite.category, existingIds);
+      const newGeoSite: GeoSiteItem = {
+        ...geoSite,
+        id,
+      };
+      return [...prev, newGeoSite];
+    });
   }, []);
 
   const updateGeoSite = useCallback(
@@ -342,11 +410,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ASN 管理函数
   const addASN = useCallback((asn: Omit<ASNItem, "id">) => {
-    const newASN: ASNItem = {
-      ...asn,
-      id: generateId(),
-    };
-    setAsnData((prev) => [...prev, newASN]);
+    setAsnData((prev) => {
+      const existingIds = prev.map((a) => a.id);
+      const id = generateIdFromName(`${asn.ip}-${asn.asn}`, existingIds);
+      const newASN: ASNItem = {
+        ...asn,
+        id,
+      };
+      return [...prev, newASN];
+    });
   }, []);
 
   const updateASN = useCallback((id: string, asn: Partial<ASNItem>) => {

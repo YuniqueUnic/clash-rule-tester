@@ -24,6 +24,9 @@ export const STORAGE_KEYS = {
   AI_RULE_EXPLANATION: "clash-ruler-ai-rule-explanation",
   AI_LAST_MATCH_RESULT: "clash-ruler-ai-last-match-result",
 
+  // 编辑器状态
+  EDITOR_HIGHLIGHTED_LINE: "clash-ruler-editor-highlighted-line",
+
   // 数据源相关（Settings 中的数据）
   DATA_POLICIES: "clash-ruler-data-policies",
   DATA_GEOIP: "clash-ruler-data-geoip",
@@ -48,6 +51,7 @@ export interface StorageData {
   [STORAGE_KEYS.TEST_CHECKBOX_STATES]: any;
   [STORAGE_KEYS.AI_RULE_EXPLANATION]: string;
   [STORAGE_KEYS.AI_LAST_MATCH_RESULT]: any;
+  [STORAGE_KEYS.EDITOR_HIGHLIGHTED_LINE]: number | null;
   [STORAGE_KEYS.DATA_POLICIES]: any[];
   [STORAGE_KEYS.DATA_GEOIP]: any[];
   [STORAGE_KEYS.DATA_NETWORK_TYPES]: any[];

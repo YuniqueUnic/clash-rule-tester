@@ -57,6 +57,7 @@ import {
   usePersistentAIRuleExplanation,
   usePersistentAISettings,
   usePersistentEditorContent,
+  usePersistentHighlightedLine,
   usePersistentTestCheckboxStates,
   usePersistentTestHistory,
   usePersistentTestMetrics,
@@ -141,7 +142,9 @@ function ClashRuleTester() {
   const ruleEngine = useState(() => new ClashRuleEngine(rules))[0];
   const [matchResult, setMatchResult] = usePersistentAILastMatchResult(null);
   const [matchResultExpanded, setMatchResultExpanded] = useState(true);
-  const [highlightedLine, setHighlightedLine] = useState<number | undefined>();
+  const [highlightedLine, setHighlightedLine] = usePersistentHighlightedLine(
+    null,
+  );
   const [isTestingInProgress, setIsTestingInProgress] = useState(false);
 
   // 验证结果
@@ -303,6 +306,14 @@ function ClashRuleTester() {
     }
   }, []);
 
+  // 同步匹配结果和高亮行状态
+  useEffect(() => {
+    if (matchResult?.lineNumber && !highlightedLine) {
+      // 如果有匹配结果但没有高亮行，恢复高亮行
+      setHighlightedLine(matchResult.lineNumber);
+    }
+  }, [matchResult, highlightedLine, setHighlightedLine]);
+
   // AI 配置对话框状态
   const [aiConfigOpen, setAiConfigOpen] = useState(false);
 
@@ -362,7 +373,7 @@ function ClashRuleTester() {
       const duration = endTime - startTime;
 
       setMatchResult(result);
-      setHighlightedLine(result?.lineNumber);
+      setHighlightedLine(result?.lineNumber ?? null);
 
       // 添加到测试历史
       const historyEntry: TestHistory = {
@@ -787,7 +798,7 @@ function ClashRuleTester() {
               <RuleEditor
                 rules={rules}
                 onRulesChange={setRules}
-                highlightedLine={highlightedLine}
+                highlightedLine={highlightedLine ?? undefined}
                 isAIOptimizing={isOptimizing}
                 onStopAIOptimization={() => {
                   aiService.cancelCurrentRequest();
