@@ -80,6 +80,8 @@ export function AIConfigurationDialog({
     "idle" | "success" | "error"
   >("idle");
   const [connectionError, setConnectionError] = useState("");
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
 
   // 从 localStorage 加载设置
   useEffect(() => {
@@ -122,6 +124,23 @@ export function AIConfigurationDialog({
 
   // 获取所有可用模型
   const getAllModels = () => {
+    // 如果有动态获取的模型列表，优先使用
+    if (availableModels.length > 0) {
+      const dynamicModels = availableModels.map((model) => ({
+        value: model,
+        label: model,
+      }));
+
+      // 添加自定义模型
+      const customModelOptions = customModels.map((model) => ({
+        value: model,
+        label: `${model} (自定义)`,
+      }));
+
+      return [...dynamicModels, ...customModelOptions];
+    }
+
+    // 回退到内置模型列表
     const builtInModels = {
       openai: [
         { value: "gpt-4o", label: "GPT-4o" },
@@ -181,19 +200,23 @@ export function AIConfigurationDialog({
     }
   };
 
-  // 测试连接
+  // 测试连接并获取模型列表
   const testConnection = async () => {
     setIsTestingConnection(true);
+    setIsLoadingModels(true);
     setConnectionStatus("idle");
     setConnectionError("");
+    setAvailableModels([]);
 
     try {
-      // 创建 AI 服务实例进行真实测试
+      // 创建 AI 服务实例并获取模型列表
       const aiService = new AIService(settings);
-      const result = await aiService.testConnection();
+      const result = await aiService.getAvailableModels();
 
-      if (result.success) {
+      if (result.success && result.models) {
         setConnectionStatus("success");
+        setAvailableModels(result.models);
+        console.log("Available models:", result.models);
       } else {
         setConnectionStatus("error");
         setConnectionError(result.error || "连接测试失败");
@@ -203,6 +226,7 @@ export function AIConfigurationDialog({
       setConnectionError(error instanceof Error ? error.message : "未知错误");
     } finally {
       setIsTestingConnection(false);
+      setIsLoadingModels(false);
     }
   };
 
@@ -429,8 +453,11 @@ export function AIConfigurationDialog({
                           )}
                       </Button>
                       {connectionStatus === "success" && (
-                        <div className="flex items-center text-green-600">
-                          <CheckCircle className="h-4 w-4" />
+                        <div className="flex items-center text-green-600 text-sm">
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          {availableModels.length > 0 && (
+                            <span>找到 {availableModels.length} 个模型</span>
+                          )}
                         </div>
                       )}
                       {connectionStatus === "error" && (

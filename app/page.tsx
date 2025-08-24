@@ -441,9 +441,27 @@ function ClashRuleTester() {
 
     setIsExplaining(true);
     try {
+      // 构建当前的测试请求数据
+      const currentTestRequest = {
+        domain: enabledTestItems.domain ? testDomain : undefined,
+        process: enabledTestItems.process ? testProcess : undefined,
+        processPath: enabledTestItems.processPath ? testProcessPath : undefined,
+        network: enabledTestItems.network ? testNetwork : undefined,
+        uid: enabledTestItems.uid ? testUID : undefined,
+        srcIPv4: enabledTestItems.srcIP ? testSrcIPv4 : undefined,
+        srcIPv6: enabledTestItems.srcIP ? testSrcIPv6 : undefined,
+        srcPort: enabledTestItems.srcPort ? testSrcPort : undefined,
+        dstIPv4: enabledTestItems.dstIP ? testDstIPv4 : undefined,
+        dstIPv6: enabledTestItems.dstIP ? testDstIPv6 : undefined,
+        dstPort: enabledTestItems.dstPort ? testDstPort : undefined,
+        geoIP: enabledTestItems.geoIP ? testGeoIP : undefined,
+      };
+
       const explanation = await aiService.explainRule(
         matchResult.rule,
         matchResult.explanation,
+        currentTestRequest,
+        matchResult,
       );
       setRuleExplanation(explanation);
     } catch (error) {

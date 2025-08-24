@@ -99,25 +99,81 @@ ${rules}
     }
   }
 
-  async explainRule(rule: string, matchContext: string): Promise<string> {
+  async explainRule(
+    rule: string,
+    matchContext: string,
+    testRequest?: any,
+    matchResult?: any,
+  ): Promise<string> {
     if (!this.isConfigured()) {
       throw new Error("AI service not configured");
     }
 
-    const prompt =
+    // 构建增强的提示词
+    let prompt =
       `你是一个 CLASH 规则专家。请用简单易懂的中文解释以下 CLASH 规则：
 
 规则：${rule}
-匹配上下文：${matchContext}
+匹配上下文：${matchContext}`;
+
+    // 添加测试请求信息
+    if (testRequest) {
+      prompt += `
+
+测试请求信息：`;
+      if (testRequest.domain) prompt += `\n- 域名：${testRequest.domain}`;
+      if (testRequest.srcIPv4) prompt += `\n- 源 IPv4：${testRequest.srcIPv4}`;
+      if (testRequest.srcIPv6) prompt += `\n- 源 IPv6：${testRequest.srcIPv6}`;
+      if (testRequest.srcPort) prompt += `\n- 源端口：${testRequest.srcPort}`;
+      if (testRequest.dstIPv4) {
+        prompt += `\n- 目标 IPv4：${testRequest.dstIPv4}`;
+      }
+      if (testRequest.dstIPv6) {
+        prompt += `\n- 目标 IPv6：${testRequest.dstIPv6}`;
+      }
+      if (testRequest.dstPort) prompt += `\n- 目标端口：${testRequest.dstPort}`;
+      if (testRequest.process) prompt += `\n- 进程名：${testRequest.process}`;
+      if (testRequest.processPath) {
+        prompt += `\n- 进程路径：${testRequest.processPath}`;
+      }
+      if (testRequest.geoIP) prompt += `\n- 地理位置：${testRequest.geoIP}`;
+      if (testRequest.network) prompt += `\n- 网络类型：${testRequest.network}`;
+      if (testRequest.uid) prompt += `\n- 用户 ID：${testRequest.uid}`;
+    }
+
+    // 添加匹配结果信息
+    if (matchResult) {
+      prompt += `
+
+匹配结果：
+- 规则类型：${matchResult.ruleType}
+- 策略：${matchResult.policy}
+- 匹配内容：${matchResult.matchedContent}
+- 行号：${matchResult.lineNumber}`;
+      if (matchResult.matchRange) {
+        prompt += `\n- 匹配范围：${matchResult.matchRange}`;
+      }
+      if (matchResult.matchPosition) {
+        prompt += `\n- 匹配位置：${matchResult.matchPosition}`;
+      }
+    }
+
+    prompt += `
 
 请详细解释：
 1. 这个规则的作用是什么
-2. 什么情况下会匹配这个规则
+2. 为什么这个测试请求会匹配到这个规则
 3. 匹配后会执行什么动作
-4. 有什么重要的注意事项
-5. 这个规则在整个配置中的作用
+4. 这个规则的匹配逻辑和条件
+5. 有什么重要的注意事项
+6. 这个规则在整个配置中的作用和位置
 
-请用通俗易懂的语言解释，适合初学者和高级用户。`;
+请用通俗易懂的语言解释，结合具体的测试场景，适合初学者和高级用户。`;
+
+    console.log(
+      "Enhanced prompt for AI explanation:",
+      prompt.slice(0, 200) + "...",
+    );
 
     try {
       console.log("AI Service - Starting explanation with settings:", {
@@ -257,44 +313,134 @@ ${rules}
     }
   }
 
-  async testConnection(): Promise<{ success: boolean; error?: string }> {
-    if (!this.isConfigured()) {
+  async getAvailableModels(): Promise<
+    { success: boolean; models?: string[]; error?: string }
+  > {
+    if (!this.settings.provider || !this.settings.apiKey) {
       return {
         success: false,
-        error: "AI service not configured",
+        error: "Provider and API key are required",
       };
     }
 
     try {
-      console.log("Testing AI connection with settings:", {
-        provider: this.settings.provider,
-        model: this.settings.model,
-        hasApiKey: !!this.settings.apiKey,
-        hasEndpoint: !!this.settings.endpoint,
-      });
+      console.log(
+        "Fetching available models for provider:",
+        this.settings.provider,
+      );
 
-      const model = this.getModel();
-      console.log("Model created successfully for testing");
+      switch (this.settings.provider) {
+        case "openai": {
+          const response = await fetch("https://api.openai.com/v1/models", {
+            headers: {
+              "Authorization": `Bearer ${this.settings.apiKey}`,
+              "Content-Type": "application/json",
+            },
+          });
 
-      // 发送一个简单的测试请求
-      const { text } = await generateText({
-        model,
-        prompt: "Hello",
-        temperature: 0,
-      });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
 
-      console.log("Test request successful, response:", text?.slice(0, 50));
+          const data = await response.json();
+          const models = data.data?.map((model: any) => model.id) || [];
 
-      return {
-        success: true,
-      };
+          return {
+            success: true,
+            models: models.filter((id: string) =>
+              id.includes("gpt") || id.includes("text") ||
+              id.includes("davinci")
+            ),
+          };
+        }
+
+        case "gemini": {
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models?key=${this.settings.apiKey}`,
+          );
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          const models = data.models?.map((model: any) =>
+            model.name.replace("models/", "")
+          ) || [];
+
+          return {
+            success: true,
+            models: models.filter((name: string) =>
+              name.includes("gemini")
+            ),
+          };
+        }
+
+        case "openai-compatible": {
+          if (!this.settings.endpoint) {
+            return {
+              success: false,
+              error: "Endpoint is required for OpenAI-compatible providers",
+            };
+          }
+
+          const modelsUrl = `${
+            this.settings.endpoint.replace(/\/+$/, "")
+          }/models`;
+          const response = await fetch(modelsUrl, {
+            headers: {
+              "Authorization": `Bearer ${this.settings.apiKey}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          const models = data.data?.map((model: any) => model.id) || [];
+
+          return {
+            success: true,
+            models,
+          };
+        }
+
+        default:
+          return {
+            success: false,
+            error: `Unsupported provider: ${this.settings.provider}`,
+          };
+      }
     } catch (error) {
-      console.error("Connection test failed:", error);
+      console.error("Failed to fetch models:", error);
 
       const errorMessage = error instanceof Error ? error.message : "未知错误";
       return {
         success: false,
         error: errorMessage,
+      };
+    }
+  }
+
+  async testConnection(): Promise<{ success: boolean; error?: string }> {
+    // 使用模型列表获取来测试连接
+    const result = await this.getAvailableModels();
+
+    if (result.success) {
+      console.log(
+        "Connection test successful, found models:",
+        result.models?.length,
+      );
+      return {
+        success: true,
+      };
+    } else {
+      console.error("Connection test failed:", result.error);
+      return {
+        success: false,
+        error: result.error,
       };
     }
   }
