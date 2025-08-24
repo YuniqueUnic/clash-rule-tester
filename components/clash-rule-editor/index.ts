@@ -36,6 +36,36 @@ export {
 } from "./clash-line-highlight";
 export type { LineHighlightParams } from "./clash-line-highlight";
 
+// 导入导出功能
+export {
+  DEFAULT_EXPORT_OPTIONS,
+  DEFAULT_IMPORT_OPTIONS,
+  exportRules,
+  getRuleStats,
+  importRulesFromFile,
+  processImportedRules,
+  validateRules,
+} from "./clash-import-export";
+export type { ExportOptions, ImportOptions } from "./clash-import-export";
+
+// 历史记录管理
+export {
+  createDebouncedHistorySaver,
+  createHistoryManager,
+  formatHistoryEntry,
+  getContentDiff,
+  useHistoryManager,
+} from "./clash-history";
+export type {
+  HistoryActions,
+  HistoryEntry,
+  HistoryState,
+} from "./clash-history";
+
+// 编辑器工具栏
+export { ClashEditorToolbar } from "./clash-editor-toolbar";
+export type { ClashEditorToolbarProps } from "./clash-editor-toolbar";
+
 // 数据 Hook
 export {
   useClashEditorData,

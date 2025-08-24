@@ -20,6 +20,11 @@ import {
   createLineHighlightExtension,
   highlightLine,
 } from "./clash-line-highlight";
+import {
+  createDebouncedHistorySaver,
+  useHistoryManager,
+} from "./clash-history";
+import { ClashEditorToolbar } from "./clash-editor-toolbar";
 
 export interface ClashRuleEditorProps {
   value: string;
@@ -30,6 +35,8 @@ export interface ClashRuleEditorProps {
   readOnly?: boolean;
   minHeight?: number;
   maxHeight?: number;
+  showToolbar?: boolean;
+  enableHistory?: boolean;
 }
 
 /**
@@ -45,6 +52,8 @@ export function ClashRuleEditor({
   readOnly = false,
   minHeight = 200,
   maxHeight = 600,
+  showToolbar = true,
+  enableHistory = true,
 }: ClashRuleEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const editorViewRef = useRef<EditorView | null>(null);
@@ -54,6 +63,12 @@ export function ClashRuleEditor({
 
   // 获取真实数据
   const editorData = useClashEditorData();
+
+  // 历史记录管理
+  const { historyActions } = useHistoryManager(value);
+  const debouncedSaveToHistory = useRef(
+    createDebouncedHistorySaver(historyActions.push, 1000),
+  ).current;
 
   // 更新行数
   useEffect(() => {
@@ -153,6 +168,11 @@ export function ClashRuleEditor({
           if (update.docChanged) {
             const newValue = update.state.doc.toString();
             onChange(newValue);
+
+            // 保存到历史记录（防抖）
+            if (enableHistory) {
+              debouncedSaveToHistory(newValue);
+            }
           }
         }),
         EditorView.theme({
@@ -188,6 +208,13 @@ export function ClashRuleEditor({
 
   return (
     <div className={cn("clash-rule-editor", className)}>
+      {showToolbar && (
+        <ClashEditorToolbar
+          content={value}
+          onContentChange={onChange}
+          historyActions={historyActions}
+        />
+      )}
       <div ref={editorRef} className="w-full" />
     </div>
   );

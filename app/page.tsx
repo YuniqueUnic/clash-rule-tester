@@ -24,6 +24,7 @@ import {
 import { SettingsDialog } from "@/components/settings-dialog";
 import { AIConfigurationDialog } from "@/components/ai-configuration-dialog";
 import { HelpDialog } from "@/components/help-dialog";
+import { Panel, ResizablePanels } from "@/components/ui/resizable-panels";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
 import { DataProvider, useDataContext } from "@/contexts/data-context";
@@ -675,34 +676,37 @@ function ClashRuleTester() {
         </div>
 
         {/* Middle Column: Rule Editor with VSCode-like layout */}
-        <div className="flex-1 flex flex-col h-full">
-          {/* Editor Area - dynamic height based on bottom panel state */}
-          <div
-            className={`bg-card overflow-hidden transition-all duration-300 ${
-              matchResultExpanded
-                ? "h-[calc(100%-16rem)]"
-                : "h-[calc(100%-3rem)]"
-            }`}
+        <div className="flex-1 h-full">
+          <ResizablePanels
+            direction="vertical"
+            defaultSizes={[70, 30]}
+            minSizes={[30, 20]}
+            storageKey="clash-ruler-editor-layout"
+            className="h-full"
           >
-            <RuleEditor
-              rules={rules}
-              onRulesChange={setRules}
-              highlightedLine={highlightedLine}
-            />
-          </div>
+            {/* Editor Panel */}
+            <Panel className="bg-card">
+              <RuleEditor
+                rules={rules}
+                onRulesChange={setRules}
+                highlightedLine={highlightedLine}
+              />
+            </Panel>
 
-          {/* Bottom Panel - Dynamic height like VSCode bottom panel */}
-          <TestResult
-            matchResult={matchResult}
-            matchResultExpanded={matchResultExpanded}
-            onToggleExpanded={() =>
-              setMatchResultExpanded(!matchResultExpanded)}
-            isTestingInProgress={isTestingInProgress}
-            ruleExplanation={ruleExplanation}
-            isExplaining={isExplaining}
-            onExplainRule={explainRule}
-            aiConfigured={aiService.isConfigured()}
-          />
+            {/* Bottom Panel - Test Results */}
+            <Panel className="bg-card border-t border-border">
+              <TestResult
+                matchResult={matchResult}
+                matchResultExpanded={true} // 始终展开，高度由分割器控制
+                onToggleExpanded={() => {}} // 不再需要切换功能
+                isTestingInProgress={isTestingInProgress}
+                ruleExplanation={ruleExplanation}
+                isExplaining={isExplaining}
+                onExplainRule={explainRule}
+                aiConfigured={aiService.isConfigured()}
+              />
+            </Panel>
+          </ResizablePanels>
         </div>
 
         {/* Right Column: Enhanced Test Panel and Results */}
