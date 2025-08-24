@@ -1059,22 +1059,28 @@ export function SettingsDialog({
           </TabsContent>
         </Tabs>
 
-        <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={() => setOpen(false)}
-            className="hover:bg-accent/80 transition-colors rounded-md"
-          >
-            取消
-          </Button>
-          <Button
-            onClick={saveSettings}
-            disabled={!isFormValid()}
-            className="hover:scale-[1.02] hover:shadow-sm transition-transform rounded-md"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            保存设置
-          </Button>
+        <div className="pt-4 border-t space-y-3">
+          <p className="text-xs text-muted-foreground">
+            💡 提示：数据管理（策略、GeoIP
+            等）的更改会自动保存，此按钮仅用于保存 AI 配置
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setOpen(false)}
+              className="hover:bg-accent/80 transition-colors rounded-md"
+            >
+              取消
+            </Button>
+            <Button
+              onClick={saveSettings}
+              disabled={!isFormValid()}
+              className="hover:scale-[1.02] hover:shadow-sm transition-transform rounded-md"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              保存 AI 配置
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

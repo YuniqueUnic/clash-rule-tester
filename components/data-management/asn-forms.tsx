@@ -67,6 +67,7 @@ export function ASNAddForm({
       onSubmit({
         ip: formData.ip.trim(),
         asn: formData.asn.trim().toUpperCase(),
+        enabled: formData.enabled, // 包含 enabled 字段
       });
     }
   };
@@ -186,6 +187,7 @@ export function ASNEditForm({
       onSubmit({
         ip: formData.ip.trim(),
         asn: formData.asn.trim().toUpperCase(),
+        enabled: formData.enabled, // 包含 enabled 字段
       });
     }
   };
@@ -286,7 +288,7 @@ export function ASNBulkImportForm({
         return;
       }
 
-      results.push({ ip, asn: normalizedASN });
+      results.push({ ip, asn: normalizedASN, enabled: true }); // 批量导入的项目默认启用
     });
 
     setErrors(newErrors);
