@@ -81,31 +81,36 @@ interface AISettings {
 // 数据管理相关接口
 interface PolicyItem extends PolicyData {
   id: string;
+  enabled: boolean;
 }
 
 interface GeoIPItem extends GeoIPCountryData {
   id: string;
+  enabled: boolean;
 }
 
 interface NetworkTypeItem extends NetworkTypeData {
   id: string;
+  enabled: boolean;
 }
 
 interface GeoSiteItem {
   id: string;
   category: string;
   domains: string[];
+  enabled: boolean;
 }
 
 interface ASNItem {
   id: string;
   ip: string;
   asn: string;
+  enabled: boolean;
 }
 
 interface SettingsDialogProps {
   onSettingsChange: (settings: AISettings) => void;
-  // 数据管理相关props
+  // 数据管理相关 props
   policies?: PolicyItem[];
   geoIPCountries?: GeoIPItem[];
   networkTypes?: NetworkTypeItem[];
@@ -130,6 +135,12 @@ interface SettingsDialogProps {
   onASNAdd?: (asn: Omit<ASNItem, "id">) => void;
   onASNEdit?: (id: string, asn: Partial<ASNItem>) => void;
   onASNDelete?: (id: string) => void;
+  // 启用/禁用状态切换回调
+  onTogglePolicyEnabled?: (id: string) => void;
+  onToggleGeoIPEnabled?: (id: string) => void;
+  onToggleNetworkTypeEnabled?: (id: string) => void;
+  onToggleGeoSiteEnabled?: (id: string) => void;
+  onToggleASNEnabled?: (id: string) => void;
 }
 
 export function SettingsDialog({
@@ -154,6 +165,11 @@ export function SettingsDialog({
   onASNAdd,
   onASNEdit,
   onASNDelete,
+  onTogglePolicyEnabled,
+  onToggleGeoIPEnabled,
+  onToggleNetworkTypeEnabled,
+  onToggleGeoSiteEnabled,
+  onToggleASNEnabled,
 }: SettingsDialogProps) {
   const [open, setOpen] = useState(false);
   const [settings, setSettings] = useState<AISettings>({
@@ -439,13 +455,13 @@ export function SettingsDialog({
         {/* TODO: 结构化这部分组件，将 Tabs 和 TabsContent 拆分为单独的组件到新文件 (夹) 中。*/}
         <Tabs defaultValue="basic" className="w-full">
           <TabsList className="grid w-full grid-cols-7">
-            <TabsTrigger value="basic">AI配置</TabsTrigger>
+            <TabsTrigger value="basic">AI 配置</TabsTrigger>
             <TabsTrigger value="models">模型管理</TabsTrigger>
             <TabsTrigger value="policies">策略管理</TabsTrigger>
             <TabsTrigger value="geoip">GeoIP</TabsTrigger>
             <TabsTrigger value="networks">网络类型</TabsTrigger>
             <TabsTrigger value="geosite">GeoSite</TabsTrigger>
-            <TabsTrigger value="asn">ASN数据</TabsTrigger>
+            <TabsTrigger value="asn">ASN 数据</TabsTrigger>
           </TabsList>
 
           <TabsContent value="basic" className="space-y-6">
@@ -797,11 +813,13 @@ export function SettingsDialog({
                 allowDelete: true,
                 allowImport: true,
                 allowExport: true,
+                allowToggleEnabled: true,
               }}
               data={policies}
               onAdd={onPolicyAdd}
               onEdit={onPolicyEdit}
               onDelete={onPolicyDelete}
+              onToggleEnabled={onTogglePolicyEnabled}
               renderAddForm={(onSubmit, onCancel) => (
                 <PolicyAddForm onSubmit={onSubmit} onCancel={onCancel} />
               )}
@@ -815,7 +833,7 @@ export function SettingsDialog({
             />
           </TabsContent>
 
-          {/* GeoIP国家管理 */}
+          {/* GeoIP 国家管理 */}
           <TabsContent value="geoip" className="space-y-6">
             <DataManager
               config={{
@@ -847,17 +865,19 @@ export function SettingsDialog({
                   },
                 ] as ColumnDef<GeoIPItem>[],
                 searchPlaceholder: "搜索国家代码或名称...",
-                emptyMessage: "暂无GeoIP数据",
+                emptyMessage: "暂无 GeoIP 数据",
                 allowAdd: true,
                 allowEdit: true,
                 allowDelete: true,
                 allowImport: true,
                 allowExport: true,
+                allowToggleEnabled: true,
               }}
               data={geoIPCountries}
               onAdd={onGeoIPAdd}
               onEdit={onGeoIPEdit}
               onDelete={onGeoIPDelete}
+              onToggleEnabled={onToggleGeoIPEnabled}
               renderAddForm={(onSubmit, onCancel) => (
                 <GeoIPAddForm onSubmit={onSubmit} onCancel={onCancel} />
               )}
@@ -912,11 +932,13 @@ export function SettingsDialog({
                 allowDelete: true,
                 allowImport: true,
                 allowExport: true,
+                allowToggleEnabled: true,
               }}
               data={networkTypes}
               onAdd={onNetworkTypeAdd}
               onEdit={onNetworkTypeEdit}
               onDelete={onNetworkTypeDelete}
+              onToggleEnabled={onToggleNetworkTypeEnabled}
               renderAddForm={(onSubmit, onCancel) => (
                 <NetworkTypeAddForm onSubmit={onSubmit} onCancel={onCancel} />
               )}
@@ -930,7 +952,7 @@ export function SettingsDialog({
             />
           </TabsContent>
 
-          {/* GeoSite管理 */}
+          {/* GeoSite 管理 */}
           <TabsContent value="geosite" className="space-y-6">
             <DataManager
               config={{
@@ -962,17 +984,19 @@ export function SettingsDialog({
                   },
                 ] as ColumnDef<GeoSiteItem>[],
                 searchPlaceholder: "搜索分类名称...",
-                emptyMessage: "暂无GeoSite数据",
+                emptyMessage: "暂无 GeoSite 数据",
                 allowAdd: true,
                 allowEdit: true,
                 allowDelete: true,
                 allowImport: true,
                 allowExport: true,
+                allowToggleEnabled: true,
               }}
               data={geoSiteData}
               onAdd={onGeoSiteAdd}
               onEdit={onGeoSiteEdit}
               onDelete={onGeoSiteDelete}
+              onToggleEnabled={onToggleGeoSiteEnabled}
               renderAddForm={(onSubmit, onCancel) => (
                 <GeoSiteAddForm onSubmit={onSubmit} onCancel={onCancel} />
               )}
@@ -986,7 +1010,7 @@ export function SettingsDialog({
             />
           </TabsContent>
 
-          {/* ASN数据管理 */}
+          {/* ASN 数据管理 */}
           <TabsContent value="asn" className="space-y-6">
             <DataManager
               config={{
@@ -1007,18 +1031,20 @@ export function SettingsDialog({
                     ),
                   },
                 ] as ColumnDef<ASNItem>[],
-                searchPlaceholder: "搜索IP地址或ASN...",
-                emptyMessage: "暂无ASN数据",
+                searchPlaceholder: "搜索 IP 地址或 ASN...",
+                emptyMessage: "暂无 ASN 数据",
                 allowAdd: true,
                 allowEdit: true,
                 allowDelete: true,
                 allowImport: true,
                 allowExport: true,
+                allowToggleEnabled: true,
               }}
               data={asnData}
               onAdd={onASNAdd}
               onEdit={onASNEdit}
               onDelete={onASNDelete}
+              onToggleEnabled={onToggleASNEnabled}
               renderAddForm={(onSubmit, onCancel) => (
                 <ASNAddForm onSubmit={onSubmit} onCancel={onCancel} />
               )}

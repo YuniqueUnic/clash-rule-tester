@@ -86,7 +86,7 @@ function ClashRuleTester() {
   const { setTheme } = useTheme();
   const { toast } = useToast();
 
-  // 数据管理Context
+  // 数据管理 Context
   const {
     policies,
     geoIPCountries,
@@ -108,6 +108,16 @@ function ClashRuleTester() {
     addASN,
     updateASN,
     deleteASN,
+    togglePolicyEnabled,
+    toggleGeoIPEnabled,
+    toggleNetworkTypeEnabled,
+    toggleGeoSiteEnabled,
+    toggleASNEnabled,
+    getEnabledPolicies,
+    getEnabledGeoIP,
+    getEnabledNetworkTypes,
+    getEnabledGeoSite,
+    getEnabledASN,
     importPolicies,
   } = useDataContext();
 
@@ -128,7 +138,7 @@ function ClashRuleTester() {
     return ruleEngine.validateRules();
   }, [rules, ruleEngine]);
 
-  // 策略管理现在通过DataContext处理
+  // 策略管理现在通过 DataContext 处理
 
   // 测试数据状态
   const [testDomain, setTestDomain] = useState("www.google.com");
@@ -144,18 +154,22 @@ function ClashRuleTester() {
   const [testNetwork, setTestNetwork] = useState("tcp");
   const [testUID, setTestUID] = useState("1000");
 
-  // GeoIP、GeoSite 和 ASN 数据现在通过DataContext管理
-  // 为了兼容现有组件，创建映射
+  // GeoIP、GeoSite 和 ASN 数据现在通过 DataContext 管理
+  // 为了兼容现有组件，创建映射，只使用已启用的数据
+  const enabledGeoIPCountries = getEnabledGeoIP();
+  const enabledGeoSiteData = getEnabledGeoSite();
+  const enabledASNData = getEnabledASN();
+
   const geoIPDatabase = Object.fromEntries(
-    geoIPCountries.map((country) => [country.code, country.name]),
+    enabledGeoIPCountries.map((country) => [country.code, country.name]),
   );
 
   const geoSiteDataMap = Object.fromEntries(
-    geoSiteData.map((site) => [site.category, site.domains]),
+    enabledGeoSiteData.map((site) => [site.category, site.domains]),
   );
 
   const asnDataMap = Object.fromEntries(
-    asnData.map((asn) => [asn.ip, asn.asn]),
+    enabledASNData.map((asn) => [asn.ip, asn.asn]),
   );
 
   const [ruleSetData, setRuleSetData] = useState<
@@ -186,11 +200,11 @@ function ClashRuleTester() {
     DEFAULT_TEST_METRICS,
   );
 
-  // 数据源管理现在通过DataContext处理
-  // 为了兼容现有组件，创建映射
-  // 显示所有国家代码，不仅仅是热门的
-  const geoIPCountryCodes = geoIPCountries.map((c) => c.code);
-  const networkTypesList = networkTypes.map((n) => n.type);
+  // 数据源管理现在通过 DataContext 处理
+  // 为了兼容现有组件，创建映射，只使用已启用的数据
+  const enabledNetworkTypes = getEnabledNetworkTypes();
+  const geoIPCountryCodes = enabledGeoIPCountries.map((c) => c.code);
+  const networkTypesList = enabledNetworkTypes.map((n) => n.type);
 
   const [newCountryCode, setNewCountryCode] = useState("");
   const [newNetworkType, setNewNetworkType] = useState("");
@@ -509,6 +523,11 @@ function ClashRuleTester() {
               onASNAdd={addASN}
               onASNEdit={updateASN}
               onASNDelete={deleteASN}
+              onTogglePolicyEnabled={togglePolicyEnabled}
+              onToggleGeoIPEnabled={toggleGeoIPEnabled}
+              onToggleNetworkTypeEnabled={toggleNetworkTypeEnabled}
+              onToggleGeoSiteEnabled={toggleGeoSiteEnabled}
+              onToggleASNEnabled={toggleASNEnabled}
             />
           </div>
         </div>
@@ -534,13 +553,13 @@ function ClashRuleTester() {
 
             {/* Quick Rule Builder */}
             <QuickRuleCreator
-              policies={policies}
+              policies={getEnabledPolicies()}
               onAddRule={addQuickRule}
             />
 
             {/* Policy Management */}
             <PolicyManager
-              policies={policies.map((p) => ({
+              policies={getEnabledPolicies().map((p) => ({
                 id: p.id,
                 name: p.name,
                 comment: p.description,
@@ -726,7 +745,7 @@ function ClashRuleTester() {
               onAddCountry={() => {
                 const code = newCountryCode.trim().toUpperCase();
                 if (code && !geoIPCountryCodes.includes(code)) {
-                  // 添加到DataContext中
+                  // 添加到 DataContext 中
                   addGeoIP({
                     code,
                     name: code, // 临时使用代码作为名称
@@ -741,7 +760,7 @@ function ClashRuleTester() {
                 }
               }}
               onRemoveCountry={(country) => {
-                // 从DataContext中删除
+                // 从 DataContext 中删除
                 const countryItem = geoIPCountries.find((c) =>
                   c.code === country
                 );
@@ -756,10 +775,10 @@ function ClashRuleTester() {
               onAddNetworkType={() => {
                 const type = newNetworkType.trim().toUpperCase();
                 if (type && !networkTypesList.includes(type)) {
-                  // 添加到DataContext中
+                  // 添加到 DataContext 中
                   addNetworkType({
                     type,
-                    description: `自定义网络类型: ${type}`,
+                    description: `自定义网络类型：${type}`,
                     category: "transport",
                   });
                   setNewNetworkType("");
@@ -770,7 +789,7 @@ function ClashRuleTester() {
                 }
               }}
               onRemoveNetworkType={(type) => {
-                // 从DataContext中删除
+                // 从 DataContext 中删除
                 const networkTypeItem = networkTypes.find((n) =>
                   n.type === type
                 );
@@ -839,7 +858,7 @@ function ClashRuleTester() {
   );
 }
 
-// 包装组件，提供DataContext
+// 包装组件，提供 DataContext
 function ClashRuleTesterWithProvider() {
   return (
     <DataProvider>

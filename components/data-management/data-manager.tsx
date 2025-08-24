@@ -4,14 +4,14 @@ import { useState } from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
-  SortingState,
-  VisibilityState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  SortingState,
   useReactTable,
+  VisibilityState,
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,18 +51,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Download,
   Edit,
   MoreHorizontal,
   Plus,
   Search,
   Trash2,
   Upload,
-  Download,
 } from "lucide-react";
 
 // 通用数据项接口
 export interface DataItem {
   id: string;
+  enabled?: boolean;
   [key: string]: any;
 }
 
@@ -78,6 +80,7 @@ export interface DataManagerConfig<T extends DataItem> {
   allowDelete?: boolean;
   allowImport?: boolean;
   allowExport?: boolean;
+  allowToggleEnabled?: boolean;
 }
 
 // 数据管理器属性接口
@@ -87,10 +90,18 @@ export interface DataManagerProps<T extends DataItem> {
   onAdd?: (item: Omit<T, "id">) => void;
   onEdit?: (id: string, item: Partial<T>) => void;
   onDelete?: (id: string) => void;
+  onToggleEnabled?: (id: string) => void;
   onImport?: (items: T[]) => void;
   onExport?: () => void;
-  renderAddForm?: (onSubmit: (item: Omit<T, "id">) => void, onCancel: () => void) => React.ReactNode;
-  renderEditForm?: (item: T, onSubmit: (item: Partial<T>) => void, onCancel: () => void) => React.ReactNode;
+  renderAddForm?: (
+    onSubmit: (item: Omit<T, "id">) => void,
+    onCancel: () => void,
+  ) => React.ReactNode;
+  renderEditForm?: (
+    item: T,
+    onSubmit: (item: Partial<T>) => void,
+    onCancel: () => void,
+  ) => React.ReactNode;
 }
 
 export function DataManager<T extends DataItem>({
@@ -99,6 +110,7 @@ export function DataManager<T extends DataItem>({
   onAdd,
   onEdit,
   onDelete,
+  onToggleEnabled,
   onImport,
   onExport,
   renderAddForm,
@@ -108,15 +120,34 @@ export function DataManager<T extends DataItem>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [globalFilter, setGlobalFilter] = useState("");
-  
+
   // 对话框状态
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedItem, setSelectedItem] = useState<T | null>(null);
 
-  // 创建带操作列的列定义
+  // 创建带启用/禁用和操作列的列定义
   const columnsWithActions: ColumnDef<T>[] = [
+    // 启用/禁用列
+    ...(config.allowToggleEnabled && typeof data[0]?.enabled !== "undefined"
+      ? [{
+        id: "enabled",
+        header: "启用",
+        cell: ({ row }: { row: any }) => {
+          const item = row.original;
+          return (
+            <Checkbox
+              checked={item.enabled}
+              onCheckedChange={() => onToggleEnabled?.(item.id)}
+              aria-label={`切换 ${
+                item.name || item.category || item.type || item.id
+              } 的启用状态`}
+            />
+          );
+        },
+      }]
+      : []),
     ...config.columns,
     {
       id: "actions",
@@ -216,7 +247,7 @@ export function DataManager<T extends DataItem>({
             const importedData = JSON.parse(e.target?.result as string);
             onImport?.(importedData);
           } catch (error) {
-            console.error("导入失败:", error);
+            console.error("导入失败：", error);
           }
         };
         reader.readAsText(file);
@@ -231,7 +262,9 @@ export function DataManager<T extends DataItem>({
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${config.title.toLowerCase().replace(/\s+/g, "-")}-export.json`;
+    link.download = `${
+      config.title.toLowerCase().replace(/\s+/g, "-")
+    }-export.json`;
     link.click();
     URL.revokeObjectURL(url);
     onExport?.();
@@ -273,7 +306,10 @@ export function DataManager<T extends DataItem>({
               </Button>
             )}
             {config.allowAdd && (
-              <Button size="sm" onClick={() => setShowAddDialog(true)}>
+              <Button
+                size="sm"
+                onClick={() => setShowAddDialog(true)}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 添加
               </Button>
@@ -289,44 +325,44 @@ export function DataManager<T extends DataItem>({
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
                     <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
                     </TableHead>
                   ))}
                 </TableRow>
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
+              {table.getRowModel().rows?.length
+                ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && "selected"}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                )
+                : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columnsWithActions.length}
+                      className="h-24 text-center"
+                    >
+                      {config.emptyMessage || "暂无数据"}
+                    </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columnsWithActions.length}
-                    className="h-24 text-center"
-                  >
-                    {config.emptyMessage || "暂无数据"}
-                  </TableCell>
-                </TableRow>
-              )}
+                )}
             </TableBody>
           </Table>
         </div>
@@ -396,10 +432,12 @@ export function DataManager<T extends DataItem>({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setShowDeleteDialog(false);
-              setSelectedItem(null);
-            }}>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowDeleteDialog(false);
+                setSelectedItem(null);
+              }}
+            >
               取消
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete}>
