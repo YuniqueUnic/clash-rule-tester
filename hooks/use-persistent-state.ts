@@ -114,6 +114,79 @@ export function usePersistentUIState(defaultState: any = {}) {
 }
 
 /**
+ * 测试请求参数持久化 Hook
+ */
+export function usePersistentTestRequestParams(defaultParams: any = {}) {
+  return usePersistentState(
+    STORAGE_KEYS.TEST_REQUEST_PARAMS,
+    defaultParams,
+    500,
+  );
+}
+
+/**
+ * 测试复选框状态持久化 Hook
+ */
+export function usePersistentTestCheckboxStates(defaultStates: any = {}) {
+  return usePersistentState(
+    STORAGE_KEYS.TEST_CHECKBOX_STATES,
+    defaultStates,
+    500,
+  );
+}
+
+/**
+ * AI 规则解释持久化 Hook
+ */
+export function usePersistentAIRuleExplanation(
+  defaultExplanation: string = "",
+) {
+  return usePersistentState(
+    STORAGE_KEYS.AI_RULE_EXPLANATION,
+    defaultExplanation,
+    1000,
+  );
+}
+
+/**
+ * AI 最后匹配结果持久化 Hook
+ */
+export function usePersistentAILastMatchResult(defaultResult: any = null) {
+  return usePersistentState(
+    STORAGE_KEYS.AI_LAST_MATCH_RESULT,
+    defaultResult,
+    1000,
+  );
+}
+
+/**
+ * 数据源持久化 Hooks
+ */
+export function usePersistentDataPolicies(defaultPolicies: any[] = []) {
+  return usePersistentState(STORAGE_KEYS.DATA_POLICIES, defaultPolicies, 1000);
+}
+
+export function usePersistentDataGeoIP(defaultGeoIP: any[] = []) {
+  return usePersistentState(STORAGE_KEYS.DATA_GEOIP, defaultGeoIP, 1000);
+}
+
+export function usePersistentDataNetworkTypes(defaultNetworkTypes: any[] = []) {
+  return usePersistentState(
+    STORAGE_KEYS.DATA_NETWORK_TYPES,
+    defaultNetworkTypes,
+    1000,
+  );
+}
+
+export function usePersistentDataGeoSite(defaultGeoSite: any[] = []) {
+  return usePersistentState(STORAGE_KEYS.DATA_GEOSITE, defaultGeoSite, 1000);
+}
+
+export function usePersistentDataASN(defaultASN: any[] = []) {
+  return usePersistentState(STORAGE_KEYS.DATA_ASN, defaultASN, 1000);
+}
+
+/**
  * 批量状态管理 Hook
  * 用于管理多个相关状态
  */

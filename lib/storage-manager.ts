@@ -17,6 +17,19 @@ export const STORAGE_KEYS = {
   TEST_PARAMS: "clash-ruler-test-params",
   TEST_HISTORY: "clash-ruler-test-history",
   TEST_METRICS: "clash-ruler-test-metrics",
+  TEST_REQUEST_PARAMS: "clash-ruler-test-request-params",
+  TEST_CHECKBOX_STATES: "clash-ruler-test-checkbox-states",
+
+  // AI 相关状态
+  AI_RULE_EXPLANATION: "clash-ruler-ai-rule-explanation",
+  AI_LAST_MATCH_RESULT: "clash-ruler-ai-last-match-result",
+
+  // 数据源相关（Settings 中的数据）
+  DATA_POLICIES: "clash-ruler-data-policies",
+  DATA_GEOIP: "clash-ruler-data-geoip",
+  DATA_NETWORK_TYPES: "clash-ruler-data-network-types",
+  DATA_GEOSITE: "clash-ruler-data-geosite",
+  DATA_ASN: "clash-ruler-data-asn",
 
   // 其他状态
   UI_STATE: "clash-ruler-ui-state",
@@ -31,6 +44,15 @@ export interface StorageData {
   [STORAGE_KEYS.TEST_PARAMS]: any;
   [STORAGE_KEYS.TEST_HISTORY]: any[];
   [STORAGE_KEYS.TEST_METRICS]: any;
+  [STORAGE_KEYS.TEST_REQUEST_PARAMS]: any;
+  [STORAGE_KEYS.TEST_CHECKBOX_STATES]: any;
+  [STORAGE_KEYS.AI_RULE_EXPLANATION]: string;
+  [STORAGE_KEYS.AI_LAST_MATCH_RESULT]: any;
+  [STORAGE_KEYS.DATA_POLICIES]: any[];
+  [STORAGE_KEYS.DATA_GEOIP]: any[];
+  [STORAGE_KEYS.DATA_NETWORK_TYPES]: any[];
+  [STORAGE_KEYS.DATA_GEOSITE]: any[];
+  [STORAGE_KEYS.DATA_ASN]: any[];
   [STORAGE_KEYS.UI_STATE]: any;
 }
 

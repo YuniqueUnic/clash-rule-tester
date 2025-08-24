@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, Trash2 } from "lucide-react";
 
@@ -21,6 +22,29 @@ export function TestMetrics({
     onExportTestHistory,
     onClearTestHistory,
 }: TestMetricsProps) {
+    // 客户端状态管理，避免 SSR 不一致
+    const [displayMetrics, setDisplayMetrics] = useState<TestMetrics>({
+        totalTests: 0,
+        averageTime: 0,
+        successRate: 0,
+        lastTestTime: 0,
+    });
+    const [isClient, setIsClient] = useState(false);
+
+    // 在客户端更新指标
+    useEffect(() => {
+        setIsClient(true);
+        setDisplayMetrics(testMetrics);
+    }, [testMetrics]);
+
+    // 如果还在服务端渲染，使用默认指标
+    const metrics = isClient ? displayMetrics : {
+        totalTests: 0,
+        averageTime: 0,
+        successRate: 0,
+        lastTestTime: 0,
+    };
+
     return (
         <div className="bg-card border border-border rounded-lg">
             <div className="p-4 border-b border-border">
@@ -35,25 +59,25 @@ export function TestMetrics({
                     <div className="space-y-1">
                         <div className="text-muted-foreground">总测试数</div>
                         <div className="font-semibold">
-                            {testMetrics.totalTests}
+                            {metrics.totalTests}
                         </div>
                     </div>
                     <div className="space-y-1">
                         <div className="text-muted-foreground">平均耗时</div>
                         <div className="font-semibold">
-                            {testMetrics.averageTime.toFixed(2)}ms
+                            {metrics.averageTime.toFixed(2)}ms
                         </div>
                     </div>
                     <div className="space-y-1">
                         <div className="text-muted-foreground">成功率</div>
                         <div className="font-semibold">
-                            {testMetrics.successRate.toFixed(1)}%
+                            {metrics.successRate.toFixed(1)}%
                         </div>
                     </div>
                     <div className="space-y-1">
                         <div className="text-muted-foreground">最近耗时</div>
                         <div className="font-semibold">
-                            {testMetrics.lastTestTime.toFixed(2)}ms
+                            {metrics.lastTestTime.toFixed(2)}ms
                         </div>
                     </div>
                 </div>

@@ -17,6 +17,13 @@ import {
   NetworkTypeData,
   PolicyData,
 } from "@/lib/clash-data-sources";
+import {
+  usePersistentDataASN,
+  usePersistentDataGeoIP,
+  usePersistentDataGeoSite,
+  usePersistentDataNetworkTypes,
+  usePersistentDataPolicies,
+} from "@/hooks/use-persistent-state";
 
 // 数据项接口
 export interface PolicyItem extends PolicyData {
@@ -164,7 +171,7 @@ const initializeASN = (): ASNItem[] => {
 
 // Provider 组件
 export function DataProvider({ children }: { children: ReactNode }) {
-  // 初始化状态
+  // 暂时保持原有的 useState 实现，避免大量重构
   const [policies, setPolicies] = useState<PolicyItem[]>(initializePolicies);
   const [geoIPCountries, setGeoIPCountries] = useState<GeoIPItem[]>(
     initializeGeoIP,
