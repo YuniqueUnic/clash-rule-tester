@@ -241,8 +241,12 @@ function ClashRuleTester() {
 
   // 启用的测试项目 - 使用持久化存储
   const defaultEnabledTestItems = useMemo(() => DEFAULT_ENABLED_TEST_ITEMS, []);
+  console.log("🔍 [Main] Default enabled test items:", defaultEnabledTestItems);
+
   const [enabledTestItems, setEnabledTestItems] =
     usePersistentTestCheckboxStates(defaultEnabledTestItems);
+
+  console.log("🔍 [Main] Current enabled test items:", enabledTestItems);
 
   // IP 类型选择 - 使用持久化存储
   const defaultIPTypeStates = useMemo(() => ({
@@ -304,6 +308,15 @@ function ClashRuleTester() {
       console.log(`Cleaned ${cleanedCount} invalid storage items`);
     }
   }, []);
+
+  // 监控 checkbox 状态变化
+  useEffect(() => {
+    console.log("🔍 [Main] enabledTestItems changed:", enabledTestItems);
+    console.log("🔍 [Main] localStorage content:", {
+      checkboxStates: localStorage.getItem("clash-ruler-test-checkbox-states"),
+      testParams: localStorage.getItem("clash-ruler-test-params"),
+    });
+  }, [enabledTestItems]);
 
   // 同步匹配结果和高亮行状态
   useEffect(() => {
