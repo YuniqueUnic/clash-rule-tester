@@ -141,19 +141,22 @@ export function AIConfigurationDialog({
           source: "custom" as const,
         }));
 
-      // 对于重复的模型，优先显示 API 版本，但在 label 中标注
-      const duplicateCustomModels = customModels
-        .filter((model) => availableModels.includes(model))
-        .map((model) => ({
-          value: model,
-          label: `${model} (API + 自定义)`,
-          source: "both" as const,
-        }));
+      // 对于重复的模型，修改 API 版本的 label 来标注
+      const duplicateModels = customModels.filter((model) =>
+        availableModels.includes(model)
+      );
+
+      // 修改动态模型的 label，如果有重复的自定义模型
+      const enhancedDynamicModels = dynamicModels.map((model) => ({
+        ...model,
+        label: duplicateModels.includes(model.value)
+          ? `${model.value} (API + 自定义)`
+          : model.label,
+      }));
 
       return [
-        ...dynamicModels,
+        ...enhancedDynamicModels,
         ...customModelOptions,
-        ...duplicateCustomModels,
       ];
     }
 

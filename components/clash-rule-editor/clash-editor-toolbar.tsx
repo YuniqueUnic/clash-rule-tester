@@ -19,7 +19,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Download, FileText, Redo2, Undo2, Upload } from "lucide-react";
+import {
+  AlignLeft,
+  Download,
+  FileText,
+  Redo2,
+  Undo2,
+  Upload,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   DEFAULT_EXPORT_OPTIONS,
@@ -32,6 +39,11 @@ import {
   validateRules,
 } from "./clash-import-export";
 import type { HistoryActions } from "./clash-history";
+import {
+  formatClashRules,
+  hasInlineComments,
+  previewFormat,
+} from "./clash-formatter";
 
 export interface ClashEditorToolbarProps {
   content: string;
@@ -61,6 +73,12 @@ export function ClashEditorToolbar({
     DEFAULT_IMPORT_OPTIONS,
   );
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+
+  // 格式化状态
+  const [formatDialogOpen, setFormatDialogOpen] = useState(false);
+  const [formatPreview, setFormatPreview] = useState<
+    ReturnType<typeof previewFormat> | null
+  >(null);
 
   // 处理导出
   const handleExport = () => {
@@ -158,6 +176,35 @@ export function ClashEditorToolbar({
     }
   };
 
+  // 处理格式化
+  const handleFormat = () => {
+    if (!hasInlineComments(content)) {
+      toast({
+        title: "无需格式化",
+        description: "当前规则没有行内注释",
+      });
+      return;
+    }
+
+    const preview = previewFormat(content);
+    setFormatPreview(preview);
+    setFormatDialogOpen(true);
+  };
+
+  // 应用格式化
+  const applyFormat = () => {
+    if (formatPreview) {
+      onContentChange(formatPreview.formatted);
+      toast({
+        title: "格式化完成",
+        description:
+          `已转换 ${formatPreview.stats.inlineCommentsConverted} 个行内注释`,
+      });
+      setFormatDialogOpen(false);
+      setFormatPreview(null);
+    }
+  };
+
   const stats = getRuleStats(content);
 
   return (
@@ -195,6 +242,26 @@ export function ClashEditorToolbar({
               </Button>
             </TooltipTrigger>
             <TooltipContent>重做 (Ctrl+Y)</TooltipContent>
+          </Tooltip>
+        </div>
+
+        <div className="h-4 w-px bg-border" />
+
+        {/* 格式化 */}
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleFormat}
+                disabled={!hasInlineComments(content)}
+                className="h-8 w-8 p-0"
+              >
+                <AlignLeft className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>格式化规则（转换行内注释）</TooltipContent>
           </Tooltip>
         </div>
 
@@ -388,6 +455,70 @@ export function ClashEditorToolbar({
             </DialogContent>
           </Dialog>
         </div>
+
+        {/* 格式化对话框 */}
+        <Dialog open={formatDialogOpen} onOpenChange={setFormatDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>格式化规则</DialogTitle>
+              <DialogDescription>
+                将行内注释转换为独立的注释行，提高规则的可读性和兼容性
+              </DialogDescription>
+            </DialogHeader>
+
+            {formatPreview && (
+              <div className="space-y-4">
+                <div className="text-sm">
+                  <div className="font-medium mb-2">格式化统计：</div>
+                  <div className="space-y-1 text-muted-foreground">
+                    <div>
+                      • 原始行数：{formatPreview.stats.originalLineCount}
+                    </div>
+                    <div>
+                      • 格式化后行数：{formatPreview.stats.formattedLineCount}
+                    </div>
+                    <div>
+                      • 转换的行内注释：{formatPreview.stats
+                        .inlineCommentsConverted} 个
+                    </div>
+                    <div>• 新增行数：{formatPreview.stats.linesAdded}</div>
+                  </div>
+                </div>
+
+                <div className="text-sm">
+                  <div className="font-medium mb-2">格式化示例：</div>
+                  <div className="space-y-2">
+                    <div>
+                      <div className="text-muted-foreground">格式化前：</div>
+                      <code className="block bg-muted p-2 rounded text-xs">
+                        DOMAIN-SUFFIX,github.com,DIRECT # GitHub 直连访问
+                      </code>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">格式化后：</div>
+                      <code className="block bg-muted p-2 rounded text-xs">
+                        # GitHub 直连访问<br />
+                        DOMAIN-SUFFIX,github.com,DIRECT
+                      </code>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setFormatDialogOpen(false)}
+                  >
+                    取消
+                  </Button>
+                  <Button onClick={applyFormat}>
+                    应用格式化
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         <div className="h-4 w-px bg-border" />
 
