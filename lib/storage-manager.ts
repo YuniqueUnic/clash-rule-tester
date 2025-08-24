@@ -97,8 +97,25 @@ export class StorageManager {
       return false;
     }
 
+    // 验证要存储的数据
+    if (value === undefined) {
+      console.warn(
+        `Attempted to store undefined value for key ${key}. Skipping.`,
+      );
+      return false;
+    }
+
     try {
       const serializedValue = JSON.stringify(value);
+
+      // 验证序列化结果
+      if (serializedValue === undefined || serializedValue === "undefined") {
+        console.warn(
+          `Serialization resulted in undefined for key ${key}. Skipping.`,
+        );
+        return false;
+      }
+
       localStorage.setItem(key, serializedValue);
       return true;
     } catch (error) {
@@ -123,9 +140,29 @@ export class StorageManager {
       if (item === null) {
         return defaultValue;
       }
+
+      // 检查是否为无效的字符串
+      if (item === "undefined" || item === "null" || item.trim() === "") {
+        console.warn(
+          `Invalid storage item for key ${key}: "${item}". Using default value.`,
+        );
+        // 清理无效数据
+        localStorage.removeItem(key);
+        return defaultValue;
+      }
+
       return JSON.parse(item) as StorageData[K];
     } catch (error) {
       console.error(`Failed to get storage item ${key}:`, error);
+      // 清理损坏的数据
+      try {
+        localStorage.removeItem(key);
+      } catch (cleanupError) {
+        console.error(
+          `Failed to cleanup invalid storage item ${key}:`,
+          cleanupError,
+        );
+      }
       return defaultValue;
     }
   }
@@ -204,9 +241,22 @@ export class StorageManager {
     const data: Record<string, any> = {};
 
     Object.values(STORAGE_KEYS).forEach((key) => {
-      const value = this.getItem(key as keyof StorageData);
-      if (value !== undefined) {
-        data[key] = value;
+      try {
+        const value = this.getItem(key as keyof StorageData);
+        if (value !== undefined && value !== null) {
+          // 验证数据可以被序列化
+          const testSerialization = JSON.stringify(value);
+          if (
+            testSerialization !== undefined && testSerialization !== "undefined"
+          ) {
+            data[key] = value;
+          } else {
+            console.warn(`Skipping invalid data for key ${key} during export`);
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to export data for key ${key}:`, error);
+        // 跳过有问题的数据，继续导出其他数据
       }
     });
 
@@ -229,6 +279,54 @@ export class StorageManager {
       return false;
     }
   }
+
+  /**
+   * 清理无效数据
+   */
+  cleanupInvalidData(): number {
+    if (!this.isStorageAvailable()) {
+      return 0;
+    }
+
+    let cleanedCount = 0;
+    const keysToClean: string[] = [];
+
+    // 检查所有已知的存储键
+    Object.values(STORAGE_KEYS).forEach((key) => {
+      try {
+        const item = localStorage.getItem(key);
+        if (item !== null) {
+          // 检查是否为无效数据
+          if (item === "undefined" || item === "null" || item.trim() === "") {
+            keysToClean.push(key);
+          } else {
+            // 尝试解析 JSON
+            try {
+              JSON.parse(item);
+            } catch {
+              keysToClean.push(key);
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error checking key ${key}:`, error);
+        keysToClean.push(key);
+      }
+    });
+
+    // 清理无效数据
+    keysToClean.forEach((key) => {
+      try {
+        localStorage.removeItem(key);
+        cleanedCount++;
+        console.log(`Cleaned invalid data for key: ${key}`);
+      } catch (error) {
+        console.error(`Failed to clean key ${key}:`, error);
+      }
+    });
+
+    return cleanedCount;
+  }
 }
 
 // 导出单例实例
@@ -246,4 +344,5 @@ export const storage = {
   info: () => storageManager.getStorageInfo(),
   export: () => storageManager.exportData(),
   import: (data: Record<string, any>) => storageManager.importData(data),
+  cleanup: () => storageManager.cleanupInvalidData(),
 };

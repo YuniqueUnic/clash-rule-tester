@@ -63,6 +63,7 @@ import {
   usePersistentTestParams,
   usePersistentUIState,
 } from "@/hooks/use-persistent-state";
+import { storage } from "@/lib/storage-manager";
 
 // 导入新的组件
 import { QuickRuleCreator } from "@/components/left-column/quick-rule-creator";
@@ -293,6 +294,14 @@ function ClashRuleTester() {
     defaultAISettings,
   );
   const [isOptimizing, setIsOptimizing] = useState(false);
+
+  // 应用启动时清理无效数据
+  useEffect(() => {
+    const cleanedCount = storage.cleanup();
+    if (cleanedCount > 0) {
+      console.log(`Cleaned ${cleanedCount} invalid storage items`);
+    }
+  }, []);
 
   // AI 配置对话框状态
   const [aiConfigOpen, setAiConfigOpen] = useState(false);
