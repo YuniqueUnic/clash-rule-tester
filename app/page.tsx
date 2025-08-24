@@ -571,6 +571,7 @@ function ClashRuleTester() {
                   type: "custom",
                   description: comment || "",
                   category: "custom",
+                  enabled: true, // 新策略默认启用
                 });
               }}
               onUpdatePolicy={(id, name, comment) => {
@@ -751,6 +752,7 @@ function ClashRuleTester() {
                     name: code, // 临时使用代码作为名称
                     continent: "Unknown",
                     popular: false,
+                    enabled: true, // 新 GeoIP 项目默认启用
                   });
                   setNewCountryCode("");
                   toast({
@@ -780,6 +782,7 @@ function ClashRuleTester() {
                     type,
                     description: `自定义网络类型：${type}`,
                     category: "transport",
+                    enabled: true, // 新网络类型默认启用
                   });
                   setNewNetworkType("");
                   toast({

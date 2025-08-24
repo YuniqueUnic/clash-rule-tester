@@ -14,12 +14,14 @@ import {
 } from "@/components/ui/select";
 import { DialogFooter } from "@/components/ui/dialog";
 import { NetworkTypeData } from "@/lib/clash-data-sources";
+import { NetworkTypeItem } from "@/contexts/data-context";
 
 // 网络类型表单数据接口
 export interface NetworkTypeFormData {
   type: string;
   description: string;
   category: "transport" | "application" | "tunnel";
+  enabled: boolean;
 }
 
 // 网络类型添加表单
@@ -34,19 +36,20 @@ export function NetworkTypeAddForm({
     type: "",
     description: "",
     category: "transport",
+    enabled: true, // 新网络类型默认启用
   });
 
   const [errors, setErrors] = useState<Partial<NetworkTypeFormData>>({});
 
   const validateForm = () => {
     const newErrors: Partial<NetworkTypeFormData> = {};
-    
+
     if (!formData.type.trim()) {
       newErrors.type = "网络类型不能为空";
     } else if (!/^[A-Z][A-Z0-9]*$/i.test(formData.type)) {
       newErrors.type = "网络类型只能包含字母和数字，且必须以字母开头";
     }
-    
+
     if (!formData.description.trim()) {
       newErrors.description = "描述不能为空";
     }
@@ -78,8 +81,9 @@ export function NetworkTypeAddForm({
         <Input
           id="network-type"
           value={formData.type}
-          onChange={(e) => setFormData({ ...formData, type: e.target.value.toUpperCase() })}
-          placeholder="例如: TCP, UDP, HTTP"
+          onChange={(e) =>
+            setFormData({ ...formData, type: e.target.value.toUpperCase() })}
+          placeholder="例如：TCP, UDP, HTTP"
           className={errors.type ? "border-destructive" : ""}
         />
         {errors.type && (
@@ -95,8 +99,7 @@ export function NetworkTypeAddForm({
         <Select
           value={formData.category}
           onValueChange={(value: "transport" | "application" | "tunnel") =>
-            setFormData({ ...formData, category: value })
-          }
+            setFormData({ ...formData, category: value })}
         >
           <SelectTrigger>
             <SelectValue />
@@ -117,8 +120,7 @@ export function NetworkTypeAddForm({
           id="network-description"
           value={formData.description}
           onChange={(e) =>
-            setFormData({ ...formData, description: e.target.value })
-          }
+            setFormData({ ...formData, description: e.target.value })}
           placeholder="描述这个网络协议的用途和特点..."
           className={errors.description ? "border-destructive" : ""}
           rows={3}
@@ -144,7 +146,7 @@ export function NetworkTypeEditForm({
   onSubmit,
   onCancel,
 }: {
-  networkType: NetworkTypeData & { id: string };
+  networkType: NetworkTypeItem;
   onSubmit: (data: Partial<NetworkTypeFormData>) => void;
   onCancel: () => void;
 }) {
@@ -152,19 +154,20 @@ export function NetworkTypeEditForm({
     type: networkType.type,
     description: networkType.description,
     category: networkType.category,
+    enabled: networkType.enabled, // 使用现有的 enabled 状态
   });
 
   const [errors, setErrors] = useState<Partial<NetworkTypeFormData>>({});
 
   const validateForm = () => {
     const newErrors: Partial<NetworkTypeFormData> = {};
-    
+
     if (!formData.type.trim()) {
       newErrors.type = "网络类型不能为空";
     } else if (!/^[A-Z][A-Z0-9]*$/i.test(formData.type)) {
       newErrors.type = "网络类型只能包含字母和数字，且必须以字母开头";
     }
-    
+
     if (!formData.description.trim()) {
       newErrors.description = "描述不能为空";
     }
@@ -196,8 +199,9 @@ export function NetworkTypeEditForm({
         <Input
           id="edit-network-type"
           value={formData.type}
-          onChange={(e) => setFormData({ ...formData, type: e.target.value.toUpperCase() })}
-          placeholder="例如: TCP, UDP, HTTP"
+          onChange={(e) =>
+            setFormData({ ...formData, type: e.target.value.toUpperCase() })}
+          placeholder="例如：TCP, UDP, HTTP"
           className={errors.type ? "border-destructive" : ""}
         />
         {errors.type && (
@@ -213,8 +217,7 @@ export function NetworkTypeEditForm({
         <Select
           value={formData.category}
           onValueChange={(value: "transport" | "application" | "tunnel") =>
-            setFormData({ ...formData, category: value })
-          }
+            setFormData({ ...formData, category: value })}
         >
           <SelectTrigger>
             <SelectValue />
@@ -235,8 +238,7 @@ export function NetworkTypeEditForm({
           id="edit-network-description"
           value={formData.description}
           onChange={(e) =>
-            setFormData({ ...formData, description: e.target.value })
-          }
+            setFormData({ ...formData, description: e.target.value })}
           placeholder="描述这个网络协议的用途和特点..."
           className={errors.description ? "border-destructive" : ""}
           rows={3}

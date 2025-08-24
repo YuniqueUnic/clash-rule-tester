@@ -14,6 +14,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { DialogFooter } from "@/components/ui/dialog";
 import { GeoIPCountryData } from "@/lib/clash-data-sources";
+import { GeoIPItem } from "@/contexts/data-context";
 
 // GeoIP 表单数据接口
 export interface GeoIPFormData {
@@ -21,6 +22,7 @@ export interface GeoIPFormData {
   name: string;
   continent: string;
   popular: boolean;
+  enabled: boolean;
 }
 
 // GeoIP 添加表单
@@ -36,6 +38,7 @@ export function GeoIPAddForm({
     name: "",
     continent: "",
     popular: false,
+    enabled: true, // 新 GeoIP 项目默认启用
   });
 
   const [errors, setErrors] = useState<Partial<GeoIPFormData>>({});
@@ -48,7 +51,7 @@ export function GeoIPAddForm({
     } else if (!/^[A-Z0-9_-]+$/i.test(formData.code)) {
       newErrors.code = "国家代码只能包含字母、数字、下划线和连字符";
     } else if (formData.code.length < 2 || formData.code.length > 10) {
-      newErrors.code = "国家代码长度应在2-10个字符之间";
+      newErrors.code = "国家代码长度应在 2-10 个字符之间";
     }
 
     if (!formData.name.trim()) {
@@ -92,7 +95,7 @@ export function GeoIPAddForm({
           value={formData.code}
           onChange={(e) =>
             setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-          placeholder="例如: CN, US, JP, CUSTOM"
+          placeholder="例如：CN, US, JP, CUSTOM"
           maxLength={10}
           className={errors.code ? "border-destructive" : ""}
         />
@@ -100,7 +103,7 @@ export function GeoIPAddForm({
           <p className="text-sm text-destructive">{errors.code}</p>
         )}
         <p className="text-xs text-muted-foreground">
-          支持标准国家代码(如CN、US)或自定义代码(如CUSTOM)，2-10个字符
+          支持标准国家代码 (如 CN、US) 或自定义代码 (如 CUSTOM)，2-10 个字符
         </p>
       </div>
 
@@ -110,7 +113,7 @@ export function GeoIPAddForm({
           id="country-name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="例如: 中国, 美国, 日本"
+          placeholder="例如：中国，美国，日本"
           className={errors.name ? "border-destructive" : ""}
         />
         {errors.name && (
@@ -171,7 +174,7 @@ export function GeoIPEditForm({
   onSubmit,
   onCancel,
 }: {
-  country: GeoIPCountryData & { id: string };
+  country: GeoIPItem;
   onSubmit: (data: Partial<GeoIPFormData>) => void;
   onCancel: () => void;
 }) {
@@ -180,6 +183,7 @@ export function GeoIPEditForm({
     name: country.name,
     continent: country.continent,
     popular: country.popular,
+    enabled: country.enabled, // 使用现有的 enabled 状态
   });
 
   const [errors, setErrors] = useState<Partial<GeoIPFormData>>({});
@@ -192,7 +196,7 @@ export function GeoIPEditForm({
     } else if (!/^[A-Z0-9_-]+$/i.test(formData.code)) {
       newErrors.code = "国家代码只能包含字母、数字、下划线和连字符";
     } else if (formData.code.length < 2 || formData.code.length > 10) {
-      newErrors.code = "国家代码长度应在2-10个字符之间";
+      newErrors.code = "国家代码长度应在 2-10 个字符之间";
     }
 
     if (!formData.name.trim()) {
@@ -236,7 +240,7 @@ export function GeoIPEditForm({
           value={formData.code}
           onChange={(e) =>
             setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-          placeholder="例如: CN, US, JP, CUSTOM"
+          placeholder="例如：CN, US, JP, CUSTOM"
           maxLength={10}
           className={errors.code ? "border-destructive" : ""}
         />
@@ -244,7 +248,7 @@ export function GeoIPEditForm({
           <p className="text-sm text-destructive">{errors.code}</p>
         )}
         <p className="text-xs text-muted-foreground">
-          支持标准国家代码(如CN、US)或自定义代码(如CUSTOM)，2-10个字符
+          支持标准国家代码 (如 CN、US) 或自定义代码 (如 CUSTOM)，2-10 个字符
         </p>
       </div>
 
@@ -254,7 +258,7 @@ export function GeoIPEditForm({
           id="edit-country-name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="例如: 中国, 美国, 日本"
+          placeholder="例如：中国，美国，日本"
           className={errors.name ? "border-destructive" : ""}
         />
         {errors.name && (

@@ -15,6 +15,7 @@ import {
 import { DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { PolicyData } from "@/lib/clash-data-sources";
+import { PolicyItem } from "@/contexts/data-context";
 
 // 策略表单数据接口
 export interface PolicyFormData {
@@ -22,6 +23,7 @@ export interface PolicyFormData {
   type: "built-in" | "custom";
   description: string;
   category: string;
+  enabled: boolean;
 }
 
 // 策略添加表单
@@ -37,23 +39,25 @@ export function PolicyAddForm({
     type: "custom",
     description: "",
     category: "custom",
+    enabled: true, // 新策略默认启用
   });
 
   const [errors, setErrors] = useState<Partial<PolicyFormData>>({});
 
   const validateForm = () => {
     const newErrors: Partial<PolicyFormData> = {};
-    
+
     if (!formData.name.trim()) {
       newErrors.name = "策略名称不能为空";
     } else if (!/^[A-Z][A-Z0-9_-]*$/i.test(formData.name)) {
-      newErrors.name = "策略名称只能包含字母、数字、下划线和连字符，且必须以字母开头";
+      newErrors.name =
+        "策略名称只能包含字母、数字、下划线和连字符，且必须以字母开头";
     }
-    
+
     if (!formData.description.trim()) {
       newErrors.description = "策略描述不能为空";
     }
-    
+
     if (!formData.category.trim()) {
       newErrors.category = "策略分类不能为空";
     }
@@ -88,7 +92,7 @@ export function PolicyAddForm({
           id="policy-name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="例如: MY_PROXY"
+          placeholder="例如：MY_PROXY"
           className={errors.name ? "border-destructive" : ""}
         />
         {errors.name && (
@@ -101,8 +105,7 @@ export function PolicyAddForm({
         <Select
           value={formData.type}
           onValueChange={(value: "built-in" | "custom") =>
-            setFormData({ ...formData, type: value })
-          }
+            setFormData({ ...formData, type: value })}
         >
           <SelectTrigger>
             <SelectValue />
@@ -118,9 +121,12 @@ export function PolicyAddForm({
         <Label htmlFor="policy-category">策略分类 *</Label>
         <Select
           value={formData.category}
-          onValueChange={(value) => setFormData({ ...formData, category: value })}
+          onValueChange={(value) =>
+            setFormData({ ...formData, category: value })}
         >
-          <SelectTrigger className={errors.category ? "border-destructive" : ""}>
+          <SelectTrigger
+            className={errors.category ? "border-destructive" : ""}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -142,8 +148,7 @@ export function PolicyAddForm({
           id="policy-description"
           value={formData.description}
           onChange={(e) =>
-            setFormData({ ...formData, description: e.target.value })
-          }
+            setFormData({ ...formData, description: e.target.value })}
           placeholder="描述这个策略的用途和功能..."
           className={errors.description ? "border-destructive" : ""}
           rows={3}
@@ -169,7 +174,7 @@ export function PolicyEditForm({
   onSubmit,
   onCancel,
 }: {
-  policy: PolicyData & { id: string };
+  policy: PolicyItem;
   onSubmit: (data: Partial<PolicyFormData>) => void;
   onCancel: () => void;
 }) {
@@ -178,23 +183,25 @@ export function PolicyEditForm({
     type: policy.type,
     description: policy.description,
     category: policy.category,
+    enabled: policy.enabled, // 使用现有的 enabled 状态
   });
 
   const [errors, setErrors] = useState<Partial<PolicyFormData>>({});
 
   const validateForm = () => {
     const newErrors: Partial<PolicyFormData> = {};
-    
+
     if (!formData.name.trim()) {
       newErrors.name = "策略名称不能为空";
     } else if (!/^[A-Z][A-Z0-9_-]*$/i.test(formData.name)) {
-      newErrors.name = "策略名称只能包含字母、数字、下划线和连字符，且必须以字母开头";
+      newErrors.name =
+        "策略名称只能包含字母、数字、下划线和连字符，且必须以字母开头";
     }
-    
+
     if (!formData.description.trim()) {
       newErrors.description = "策略描述不能为空";
     }
-    
+
     if (!formData.category.trim()) {
       newErrors.category = "策略分类不能为空";
     }
@@ -240,7 +247,7 @@ export function PolicyEditForm({
           id="edit-policy-name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="例如: MY_PROXY"
+          placeholder="例如：MY_PROXY"
           disabled={isBuiltIn}
           className={errors.name ? "border-destructive" : ""}
         />
@@ -254,8 +261,7 @@ export function PolicyEditForm({
         <Select
           value={formData.type}
           onValueChange={(value: "built-in" | "custom") =>
-            setFormData({ ...formData, type: value })
-          }
+            setFormData({ ...formData, type: value })}
           disabled={isBuiltIn}
         >
           <SelectTrigger>
@@ -272,9 +278,12 @@ export function PolicyEditForm({
         <Label htmlFor="edit-policy-category">策略分类 *</Label>
         <Select
           value={formData.category}
-          onValueChange={(value) => setFormData({ ...formData, category: value })}
+          onValueChange={(value) =>
+            setFormData({ ...formData, category: value })}
         >
-          <SelectTrigger className={errors.category ? "border-destructive" : ""}>
+          <SelectTrigger
+            className={errors.category ? "border-destructive" : ""}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -296,8 +305,7 @@ export function PolicyEditForm({
           id="edit-policy-description"
           value={formData.description}
           onChange={(e) =>
-            setFormData({ ...formData, description: e.target.value })
-          }
+            setFormData({ ...formData, description: e.target.value })}
           placeholder="描述这个策略的用途和功能..."
           className={errors.description ? "border-destructive" : ""}
           rows={3}

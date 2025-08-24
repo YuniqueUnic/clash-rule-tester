@@ -8,11 +8,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
+import { GeoSiteItem } from "@/contexts/data-context";
 
 // GeoSite 表单数据接口
 export interface GeoSiteFormData {
   category: string;
   domains: string[];
+  enabled: boolean;
 }
 
 // GeoSite 添加表单
@@ -26,6 +28,7 @@ export function GeoSiteAddForm({
   const [formData, setFormData] = useState<GeoSiteFormData>({
     category: "",
     domains: [],
+    enabled: true, // 新 GeoSite 项目默认启用
   });
 
   const [domainInput, setDomainInput] = useState("");
@@ -135,7 +138,7 @@ export function GeoSiteAddForm({
               ...formData,
               category: e.target.value.toLowerCase(),
             })}
-          placeholder="例如: google, facebook, streaming"
+          placeholder="例如：google, facebook, streaming"
           className={errors.category ? "border-destructive" : ""}
         />
         {errors.category && (
@@ -154,7 +157,7 @@ export function GeoSiteAddForm({
             value={domainInput}
             onChange={(e) => setDomainInput(e.target.value)}
             onKeyPress={handleDomainKeyPress}
-            placeholder="例如: google.com"
+            placeholder="例如：google.com"
             className={errors.domainInput ? "border-destructive" : ""}
           />
           <Button type="button" onClick={addDomain}>
@@ -187,7 +190,8 @@ export function GeoSiteAddForm({
           }}
         />
         <p className="text-xs text-muted-foreground">
-          支持换行、逗号或分号分隔的多个域名。输入完成后按Ctrl+Enter或点击其他地方自动添加
+          支持换行、逗号或分号分隔的多个域名。输入完成后按 Ctrl+Enter
+          或点击其他地方自动添加
         </p>
       </div>
 
@@ -238,13 +242,14 @@ export function GeoSiteEditForm({
   onSubmit,
   onCancel,
 }: {
-  geosite: { id: string; category: string; domains: string[] };
+  geosite: GeoSiteItem;
   onSubmit: (data: Partial<GeoSiteFormData>) => void;
   onCancel: () => void;
 }) {
   const [formData, setFormData] = useState<GeoSiteFormData>({
     category: geosite.category,
     domains: [...geosite.domains],
+    enabled: geosite.enabled, // 使用现有的 enabled 状态
   });
 
   const [domainInput, setDomainInput] = useState("");
@@ -339,7 +344,7 @@ export function GeoSiteEditForm({
               ...formData,
               category: e.target.value.toLowerCase(),
             })}
-          placeholder="例如: google, facebook, streaming"
+          placeholder="例如：google, facebook, streaming"
           className={errors.category ? "border-destructive" : ""}
         />
         {errors.category && (
@@ -355,7 +360,7 @@ export function GeoSiteEditForm({
             value={domainInput}
             onChange={(e) => setDomainInput(e.target.value)}
             onKeyPress={handleDomainKeyPress}
-            placeholder="例如: google.com"
+            placeholder="例如：google.com"
             className={errors.domainInput ? "border-destructive" : ""}
           />
           <Button type="button" onClick={addDomain}>
