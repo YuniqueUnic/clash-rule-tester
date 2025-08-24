@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/tooltip";
 import {
   AlignLeft,
+  Copy,
   Download,
   FileText,
   Redo2,
@@ -205,6 +206,31 @@ export function ClashEditorToolbar({
     }
   };
 
+  // 处理复制
+  const handleCopy = async () => {
+    if (!content.trim()) {
+      toast({
+        title: "无内容可复制",
+        description: "编辑器内容为空",
+      });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(content);
+      toast({
+        title: "复制成功",
+        description: "编辑器内容已复制到剪贴板",
+      });
+    } catch (error) {
+      toast({
+        title: "复制失败",
+        description: "无法复制到剪贴板",
+        variant: "destructive",
+      });
+    }
+  };
+
   const stats = getRuleStats(content);
 
   return (
@@ -242,6 +268,26 @@ export function ClashEditorToolbar({
               </Button>
             </TooltipTrigger>
             <TooltipContent>重做 (Ctrl+Y)</TooltipContent>
+          </Tooltip>
+        </div>
+
+        <div className="h-4 w-px bg-border" />
+
+        {/* 复制 */}
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCopy}
+                disabled={!content.trim()}
+                className="h-8 w-8 p-0"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>复制所有内容</TooltipContent>
           </Tooltip>
         </div>
 

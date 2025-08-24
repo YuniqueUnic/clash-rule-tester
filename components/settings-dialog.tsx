@@ -9,7 +9,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Settings } from "lucide-react";
+import { Download, HardDrive, Settings, Trash2, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
@@ -43,6 +43,8 @@ import {
   NetworkTypeData,
   PolicyData,
 } from "@/lib/clash-data-sources";
+import { storage } from "@/lib/storage-manager";
+import { useToast } from "@/hooks/use-toast";
 
 interface AISettings {
   provider: "openai" | "gemini" | "openai-compatible" | "";
@@ -416,12 +418,13 @@ export function SettingsDialog({
 
         {/* 数据管理标签页 */}
         <Tabs defaultValue="policies" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="policies">策略管理</TabsTrigger>
             <TabsTrigger value="geoip">GeoIP</TabsTrigger>
             <TabsTrigger value="networks">网络类型</TabsTrigger>
             <TabsTrigger value="geosite">GeoSite</TabsTrigger>
             <TabsTrigger value="asn">ASN 数据</TabsTrigger>
+            <TabsTrigger value="storage">存储管理</TabsTrigger>
           </TabsList>
 
           {/* 策略管理 */}
@@ -709,8 +712,246 @@ export function SettingsDialog({
               )}
             />
           </TabsContent>
+
+          {/* 存储管理 */}
+          <TabsContent value="storage" className="space-y-6">
+            <StorageManagement />
+          </TabsContent>
         </Tabs>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * 存储管理组件
+ */
+function StorageManagement() {
+  const { toast } = useToast();
+  const [storageInfo, setStorageInfo] = useState(storage.info());
+  const [showResetDialog, setShowResetDialog] = useState(false);
+
+  // 刷新存储信息
+  const refreshStorageInfo = () => {
+    setStorageInfo(storage.info());
+  };
+
+  // 重置所有数据
+  const handleReset = () => {
+    const success = storage.clear();
+    if (success) {
+      toast({
+        title: "重置成功",
+        description: "所有本地存储数据已清空",
+      });
+      refreshStorageInfo();
+      // 刷新页面以重新加载默认状态
+      window.location.reload();
+    } else {
+      toast({
+        title: "重置失败",
+        description: "无法清空本地存储数据",
+        variant: "destructive",
+      });
+    }
+    setShowResetDialog(false);
+  };
+
+  // 导出数据
+  const handleExport = () => {
+    try {
+      const data = storage.export();
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `clash-ruler-backup-${
+        new Date().toISOString().slice(0, 19).replace(/:/g, "-")
+      }.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "导出成功",
+        description: "数据已导出为 JSON 文件",
+      });
+    } catch (error) {
+      toast({
+        title: "导出失败",
+        description: "无法导出数据",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // 导入数据
+  const handleImport = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = JSON.parse(e.target?.result as string);
+            const success = storage.import(data);
+            if (success) {
+              toast({
+                title: "导入成功",
+                description: "数据已成功导入，页面将刷新",
+              });
+              setTimeout(() => window.location.reload(), 1000);
+            } else {
+              toast({
+                title: "导入失败",
+                description: "无法导入数据",
+                variant: "destructive",
+              });
+            }
+          } catch (error) {
+            toast({
+              title: "导入失败",
+              description: "文件格式不正确",
+              variant: "destructive",
+            });
+          }
+        };
+        reader.readAsText(file);
+      }
+    };
+    input.click();
+  };
+
+  // 格式化文件大小
+  const formatSize = (bytes: number) => {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium">本地存储管理</h3>
+        <p className="text-sm text-muted-foreground">
+          管理应用的本地存储数据，包括编辑器内容、设置和测试历史等。
+        </p>
+      </div>
+
+      {/* 存储信息 */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-medium">存储使用情况</h4>
+          <Button variant="outline" size="sm" onClick={refreshStorageInfo}>
+            刷新
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="p-4 border rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <HardDrive className="h-4 w-4" />
+              <span className="text-sm font-medium">总大小</span>
+            </div>
+            <div className="text-2xl font-bold">
+              {formatSize(storageInfo.totalSize)}
+            </div>
+          </div>
+
+          <div className="p-4 border rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <Settings className="h-4 w-4" />
+              <span className="text-sm font-medium">存储项数量</span>
+            </div>
+            <div className="text-2xl font-bold">{storageInfo.itemCount}</div>
+          </div>
+        </div>
+
+        {/* 存储项详情 */}
+        {storageInfo.items.length > 0 && (
+          <div className="space-y-2">
+            <h5 className="text-sm font-medium">存储项详情</h5>
+            <div className="space-y-1">
+              {storageInfo.items.map((item) => (
+                <div
+                  key={item.key}
+                  className="flex justify-between items-center p-2 bg-muted rounded"
+                >
+                  <span className="text-sm font-mono">{item.key}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {formatSize(item.size)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 操作按钮 */}
+      <div className="space-y-4">
+        <h4 className="text-sm font-medium">数据管理</h4>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-2" />
+            导出数据
+          </Button>
+          <Button variant="outline" onClick={handleImport}>
+            <Upload className="h-4 w-4 mr-2" />
+            导入数据
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => setShowResetDialog(true)}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            重置所有数据
+          </Button>
+        </div>
+      </div>
+
+      {/* 重置确认对话框 */}
+      <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确认重置所有数据</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              此操作将清空所有本地存储的数据，包括：
+            </p>
+            <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+              <li>编辑器内容和历史记录</li>
+              <li>AI 设置和应用配置</li>
+              <li>测试参数和测试历史</li>
+              <li>测试指标和统计数据</li>
+              <li>其他所有应用状态</li>
+            </ul>
+            <p className="text-sm font-medium text-destructive">
+              此操作不可撤销，请确认您要继续。
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowResetDialog(false)}
+              >
+                取消
+              </Button>
+              <Button variant="destructive" onClick={handleReset}>
+                确认重置
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

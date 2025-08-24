@@ -25,6 +25,7 @@ import {
   useHistoryManager,
 } from "./clash-history";
 import { ClashEditorToolbar } from "./clash-editor-toolbar";
+import { AIOptimizationMask } from "./ai-optimization-mask";
 
 export interface ClashRuleEditorProps {
   value: string;
@@ -37,6 +38,10 @@ export interface ClashRuleEditorProps {
   maxHeight?: number;
   showToolbar?: boolean;
   enableHistory?: boolean;
+  /** AI 优化状态 */
+  isAIOptimizing?: boolean;
+  /** 停止 AI 优化的回调 */
+  onStopAIOptimization?: () => void;
 }
 
 /**
@@ -54,6 +59,8 @@ export function ClashRuleEditor({
   maxHeight = 600,
   showToolbar = true,
   enableHistory = true,
+  isAIOptimizing = false,
+  onStopAIOptimization,
 }: ClashRuleEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const editorViewRef = useRef<EditorView | null>(null);
@@ -217,7 +224,7 @@ export function ClashRuleEditor({
   }, [highlightedLine, isDark]);
 
   return (
-    <div className={cn("clash-rule-editor", className)}>
+    <div className={cn("clash-rule-editor relative", className)}>
       {showToolbar && (
         <ClashEditorToolbar
           content={value}
@@ -225,7 +232,15 @@ export function ClashRuleEditor({
           historyActions={historyActions}
         />
       )}
-      <div ref={editorRef} className="w-full" />
+      <div className="relative">
+        <div ref={editorRef} className="w-full" />
+
+        {/* AI 优化遮罩 */}
+        <AIOptimizationMask
+          visible={isAIOptimizing}
+          onStop={onStopAIOptimization || (() => {})}
+        />
+      </div>
     </div>
   );
 }
