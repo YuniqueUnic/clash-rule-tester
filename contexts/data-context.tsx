@@ -5,6 +5,7 @@ import React, {
   ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useState,
 } from "react";
 import {
@@ -17,6 +18,7 @@ import {
   NetworkTypeData,
   PolicyData,
 } from "@/lib/clash-data-sources";
+import { STORAGE_KEYS, storageManager } from "@/lib/storage-manager";
 import {
   usePersistentDataASN,
   usePersistentDataGeoIP,
@@ -171,7 +173,7 @@ const initializeASN = (): ASNItem[] => {
 
 // Provider 组件
 export function DataProvider({ children }: { children: ReactNode }) {
-  // 暂时保持原有的 useState 实现，避免大量重构
+  // 保持原有的 useState 实现，在主页面级别添加持久化
   const [policies, setPolicies] = useState<PolicyItem[]>(initializePolicies);
   const [geoIPCountries, setGeoIPCountries] = useState<GeoIPItem[]>(
     initializeGeoIP,
@@ -183,6 +185,71 @@ export function DataProvider({ children }: { children: ReactNode }) {
     initializeGeoSite,
   );
   const [asnData, setAsnData] = useState<ASNItem[]>(initializeASN);
+
+  // 数据持久化同步
+  useEffect(() => {
+    storageManager.setItem(STORAGE_KEYS.DATA_POLICIES, policies);
+  }, [policies]);
+
+  useEffect(() => {
+    storageManager.setItem(STORAGE_KEYS.DATA_GEOIP, geoIPCountries);
+  }, [geoIPCountries]);
+
+  useEffect(() => {
+    storageManager.setItem(STORAGE_KEYS.DATA_NETWORK_TYPES, networkTypes);
+  }, [networkTypes]);
+
+  useEffect(() => {
+    storageManager.setItem(STORAGE_KEYS.DATA_GEOSITE, geoSiteData);
+  }, [geoSiteData]);
+
+  useEffect(() => {
+    storageManager.setItem(STORAGE_KEYS.DATA_ASN, asnData);
+  }, [asnData]);
+
+  // 从 localStorage 加载数据
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const savedPolicies = await storageManager.getItem(
+          STORAGE_KEYS.DATA_POLICIES,
+        );
+        if (savedPolicies && Array.isArray(savedPolicies)) {
+          setPolicies(savedPolicies);
+        }
+
+        const savedGeoIP = await storageManager.getItem(
+          STORAGE_KEYS.DATA_GEOIP,
+        );
+        if (savedGeoIP && Array.isArray(savedGeoIP)) {
+          setGeoIPCountries(savedGeoIP);
+        }
+
+        const savedNetworkTypes = await storageManager.getItem(
+          STORAGE_KEYS.DATA_NETWORK_TYPES,
+        );
+        if (savedNetworkTypes && Array.isArray(savedNetworkTypes)) {
+          setNetworkTypes(savedNetworkTypes);
+        }
+
+        const savedGeoSite = await storageManager.getItem(
+          STORAGE_KEYS.DATA_GEOSITE,
+        );
+        if (savedGeoSite && Array.isArray(savedGeoSite)) {
+          setGeoSiteData(savedGeoSite);
+        }
+
+        const savedASN = await storageManager.getItem(STORAGE_KEYS.DATA_ASN);
+        if (savedASN && Array.isArray(savedASN)) {
+          setAsnData(savedASN);
+        }
+      } catch (error) {
+        console.error("Failed to load data from storage:", error);
+      }
+    };
+
+    loadData();
+  }, []);
 
   // 策略管理函数
   const addPolicy = useCallback((policy: Omit<PolicyItem, "id">) => {

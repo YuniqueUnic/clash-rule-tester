@@ -53,7 +53,11 @@ import {
 } from "@/lib/clash-data-sources";
 import { AIService } from "@/lib/ai-service";
 import {
+  usePersistentAILastMatchResult,
+  usePersistentAIRuleExplanation,
+  usePersistentAISettings,
   usePersistentEditorContent,
+  usePersistentTestCheckboxStates,
   usePersistentTestHistory,
   usePersistentTestMetrics,
   usePersistentTestParams,
@@ -134,7 +138,7 @@ function ClashRuleTester() {
   // 核心状态 - 使用持久化存储
   const [rules, setRules] = usePersistentEditorContent(SAMPLE_RULES);
   const ruleEngine = useState(() => new ClashRuleEngine(rules))[0];
-  const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
+  const [matchResult, setMatchResult] = usePersistentAILastMatchResult(null);
   const [matchResultExpanded, setMatchResultExpanded] = useState(true);
   const [highlightedLine, setHighlightedLine] = useState<number | undefined>();
   const [isTestingInProgress, setIsTestingInProgress] = useState(false);
@@ -228,14 +232,23 @@ function ClashRuleTester() {
     () => RULE_SETS,
   );
 
-  // 启用的测试项目
-  const [enabledTestItems, setEnabledTestItems] = useState<EnabledTestItems>(
-    DEFAULT_ENABLED_TEST_ITEMS,
-  );
+  // 启用的测试项目 - 使用持久化存储
+  const [enabledTestItems, setEnabledTestItems] =
+    usePersistentTestCheckboxStates(
+      DEFAULT_ENABLED_TEST_ITEMS,
+    );
 
-  // IP 类型选择
-  const [srcIPType, setSrcIPType] = useState<"ipv4" | "ipv6" | "both">("ipv4");
-  const [dstIPType, setDstIPType] = useState<"ipv4" | "ipv6" | "both">("ipv4");
+  // IP 类型选择 - 使用持久化存储
+  const [ipTypeStates, setIPTypeStates] = usePersistentUIState({
+    srcIPType: "ipv4",
+    dstIPType: "ipv4",
+  });
+  const srcIPType = ipTypeStates.srcIPType || "ipv4";
+  const setSrcIPType = (value: "ipv4" | "ipv6" | "both") =>
+    setIPTypeStates({ ...ipTypeStates, srcIPType: value });
+  const dstIPType = ipTypeStates.dstIPType || "ipv4";
+  const setDstIPType = (value: "ipv4" | "ipv6" | "both") =>
+    setIPTypeStates({ ...ipTypeStates, dstIPType: value });
 
   // 自动测试
   const [autoTest, setAutoTest] = useState(false);
@@ -259,10 +272,12 @@ function ClashRuleTester() {
   const [newCountryCode, setNewCountryCode] = useState("");
   const [newNetworkType, setNewNetworkType] = useState("");
 
-  // AI 相关状态
-  const [ruleExplanation, setRuleExplanation] = useState("");
+  // AI 相关状态 - 使用持久化存储
+  const [ruleExplanation, setRuleExplanation] = usePersistentAIRuleExplanation(
+    "",
+  );
   const [isExplaining, setIsExplaining] = useState(false);
-  const [aiSettings, setAISettings] = useState<AISettings>({
+  const [aiSettings, setAISettings] = usePersistentAISettings({
     provider: "",
     apiKey: "",
     model: "",

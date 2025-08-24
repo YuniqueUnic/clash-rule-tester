@@ -40,6 +40,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AIService } from "@/lib/ai-service";
+import { usePersistentAISettings } from "@/hooks/use-persistent-state";
 
 // AI 配置相关的类型定义
 interface AISettings {
@@ -60,8 +61,8 @@ export function AIConfigurationDialog({
   onOpenChange,
   onSettingsChange,
 }: AIConfigurationDialogProps) {
-  // AI 配置状态
-  const [settings, setSettings] = useState<AISettings>({
+  // AI 配置状态 - 使用持久化存储
+  const [settings, setSettings] = usePersistentAISettings({
     provider: "",
     apiKey: "",
     model: "",
@@ -83,32 +84,14 @@ export function AIConfigurationDialog({
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
 
-  // 从 localStorage 加载设置
+  // 初始化模型输入值
   useEffect(() => {
-    const savedSettings = localStorage.getItem("ai-settings");
-    if (savedSettings) {
-      try {
-        const parsed = JSON.parse(savedSettings);
-        setSettings(parsed);
-        setModelInputValue(parsed.model || "");
-      } catch (error) {
-        console.error("Failed to parse AI settings:", error);
-      }
-    }
-
-    const savedCustomModels = localStorage.getItem("custom-models");
-    if (savedCustomModels) {
-      try {
-        setCustomModels(JSON.parse(savedCustomModels));
-      } catch (error) {
-        console.error("Failed to parse custom models:", error);
-      }
-    }
-  }, []);
+    setModelInputValue(settings.model || "");
+  }, [settings.model]);
 
   // 更新设置
   const updateSettings = (key: keyof AISettings, value: string) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
+    setSettings({ ...settings, [key]: value });
     setConnectionStatus("idle");
   };
 
@@ -274,7 +257,7 @@ export function AIConfigurationDialog({
 
   // 保存设置
   const saveSettings = () => {
-    localStorage.setItem("ai-settings", JSON.stringify(settings));
+    // 设置已经通过持久化 hooks 自动保存
     onSettingsChange?.(settings);
     onOpenChange(false);
   };
