@@ -44,10 +44,9 @@ export function usePersistentState<K extends keyof StorageData>(
   // 更新状态并保存
   const updateState = useCallback((value: StorageData[K]) => {
     setState(value);
-    if (isClient) {
-      debouncedSave(value);
-    }
-  }, [debouncedSave, isClient]);
+    // 总是尝试保存，不检查 isClient，因为用户操作时肯定在客户端
+    debouncedSave(value);
+  }, [debouncedSave]);
 
   // 监听其他标签页的变化
   useEffect(() => {

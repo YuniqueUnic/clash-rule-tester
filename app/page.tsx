@@ -240,10 +240,9 @@ function ClashRuleTester() {
   );
 
   // 启用的测试项目 - 使用持久化存储
+  const defaultEnabledTestItems = useMemo(() => DEFAULT_ENABLED_TEST_ITEMS, []);
   const [enabledTestItems, setEnabledTestItems] =
-    usePersistentTestCheckboxStates(
-      DEFAULT_ENABLED_TEST_ITEMS,
-    );
+    usePersistentTestCheckboxStates(defaultEnabledTestItems);
 
   // IP 类型选择 - 使用持久化存储
   const defaultIPTypeStates = useMemo(() => ({
