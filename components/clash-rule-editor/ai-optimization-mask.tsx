@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AlertTriangle, Loader2, Square } from "lucide-react";
+import { AlertTriangle, Loader2, XSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface AIOptimizationMaskProps {
@@ -84,7 +84,7 @@ export function AIOptimizationMask({
             onClick={handleStopClick}
             className="flex items-center gap-2"
           >
-            <Square className="h-4 w-4" />
+            <XSquare className="h-4 w-4" />
             停止优化
           </Button>
         </div>

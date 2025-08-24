@@ -756,7 +756,10 @@ function ClashRuleTester() {
                 onRulesChange={setRules}
                 highlightedLine={highlightedLine}
                 isAIOptimizing={isOptimizing}
-                onStopAIOptimization={() => setIsOptimizing(false)}
+                onStopAIOptimization={() => {
+                  aiService.cancelCurrentRequest();
+                  setIsOptimizing(false);
+                }}
               />
             </Panel>
 

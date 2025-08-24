@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,6 +80,21 @@ export function ClashEditorToolbar({
   const [formatPreview, setFormatPreview] = useState<
     ReturnType<typeof previewFormat> | null
   >(null);
+
+  // 统计信息状态，避免 SSR 不一致
+  const [stats, setStats] = useState(() => getRuleStats(""));
+  const [isClient, setIsClient] = useState(false);
+
+  // 在客户端更新统计信息
+  useEffect(() => {
+    setIsClient(true);
+    setStats(getRuleStats(content));
+  }, [content]);
+
+  // 如果还在服务端渲染，使用默认统计
+  const displayStats = isClient
+    ? stats
+    : { ruleLines: 0, commentLines: 0, totalLines: 0, emptyLines: 0 };
 
   // 处理导出
   const handleExport = () => {
@@ -230,8 +245,6 @@ export function ClashEditorToolbar({
       });
     }
   };
-
-  const stats = getRuleStats(content);
 
   return (
     <TooltipProvider>
@@ -481,9 +494,10 @@ export function ClashEditorToolbar({
                 </div>
 
                 <div className="text-sm text-muted-foreground">
-                  将导出 {stats.ruleLines} 条规则
-                  {exportOptions.removeComments && stats.commentLines > 0 &&
-                    `（忽略 ${stats.commentLines} 行注释）`}
+                  将导出 {displayStats.ruleLines} 条规则
+                  {exportOptions.removeComments &&
+                    displayStats.commentLines > 0 &&
+                    `（忽略 ${displayStats.commentLines} 行注释）`}
                 </div>
 
                 <div className="flex justify-end gap-2">
@@ -571,8 +585,10 @@ export function ClashEditorToolbar({
         {/* 统计信息 */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <FileText className="h-4 w-4" />
-          <span>{stats.ruleLines} 条规则</span>
-          {stats.commentLines > 0 && <span>• {stats.commentLines} 行注释</span>}
+          <span>{displayStats.ruleLines} 条规则</span>
+          {displayStats.commentLines > 0 && (
+            <span>• {displayStats.commentLines} 行注释</span>
+          )}
         </div>
 
         {/* 隐藏的文件输入 */}

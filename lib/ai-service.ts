@@ -14,8 +14,28 @@ interface AISettings {
 export class AIService {
   private settings: AISettings;
 
+  // 用于取消正在进行的请求
+  private abortController: AbortController | null = null;
+
   constructor(settings: AISettings) {
     this.settings = settings;
+  }
+
+  /**
+   * 取消当前正在进行的 AI 请求
+   */
+  cancelCurrentRequest(): void {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
+  }
+
+  /**
+   * 检查是否有正在进行的请求
+   */
+  isRequestInProgress(): boolean {
+    return this.abortController !== null;
   }
 
   private getModel() {
@@ -64,6 +84,12 @@ export class AIService {
       throw new Error("AI service not configured");
     }
 
+    // 取消之前的请求（如果有）
+    this.cancelCurrentRequest();
+
+    // 创建新的 AbortController
+    this.abortController = new AbortController();
+
     const prompt =
       `你是一个 CLASH 规则优化专家。请分析以下 CLASH 规则并进行优化：
 
@@ -101,10 +127,21 @@ ${rules}
         prompt,
         // maxTokens: 3000,
         temperature: 0.3,
+        abortSignal: this.abortController.signal,
       });
 
+      // 请求成功完成，清除 AbortController
+      this.abortController = null;
       return text;
     } catch (error) {
+      // 清除 AbortController
+      this.abortController = null;
+
+      // 检查是否是取消错误
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("AI 优化已被用户取消");
+      }
+
       console.error("AI optimization failed:", error);
       throw new Error(
         `AI 优化失败：${error instanceof Error ? error.message : "未知错误"}`,
