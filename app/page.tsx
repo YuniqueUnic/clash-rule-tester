@@ -155,7 +155,7 @@ function ClashRuleTester() {
   // 策略管理现在通过 DataContext 处理
 
   // 测试数据状态 - 使用持久化存储
-  const [testParams, setTestParams] = usePersistentTestParams({
+  const defaultTestParams = useMemo(() => ({
     domain: "www.google.com",
     srcIPv4: "192.168.1.100",
     srcIPv6: "2001:db8::1",
@@ -168,7 +168,10 @@ function ClashRuleTester() {
     geoIP: "US",
     network: "tcp",
     uid: "1000",
-  });
+  }), []);
+  const [testParams, setTestParams] = usePersistentTestParams(
+    defaultTestParams,
+  );
 
   // 为了兼容现有代码，创建单独的 getter 和 setter
   const testDomain = testParams.domain;
@@ -239,10 +242,13 @@ function ClashRuleTester() {
     );
 
   // IP 类型选择 - 使用持久化存储
-  const [ipTypeStates, setIPTypeStates] = usePersistentUIState({
+  const defaultIPTypeStates = useMemo(() => ({
     srcIPType: "ipv4",
     dstIPType: "ipv4",
-  });
+  }), []);
+  const [ipTypeStates, setIPTypeStates] = usePersistentUIState(
+    defaultIPTypeStates,
+  );
   const srcIPType = ipTypeStates.srcIPType || "ipv4";
   const setSrcIPType = (value: "ipv4" | "ipv6" | "both") =>
     setIPTypeStates({ ...ipTypeStates, srcIPType: value });
@@ -277,12 +283,15 @@ function ClashRuleTester() {
     "",
   );
   const [isExplaining, setIsExplaining] = useState(false);
-  const [aiSettings, setAISettings] = usePersistentAISettings({
+  const defaultAISettings = useMemo(() => ({
     provider: "",
     apiKey: "",
     model: "",
     endpoint: "",
-  });
+  }), []);
+  const [aiSettings, setAISettings] = usePersistentAISettings(
+    defaultAISettings,
+  );
   const [isOptimizing, setIsOptimizing] = useState(false);
 
   // AI 配置对话框状态

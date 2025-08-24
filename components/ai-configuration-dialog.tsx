@@ -56,18 +56,20 @@ interface AIConfigurationDialogProps {
   onSettingsChange?: (settings: AISettings) => void;
 }
 
+const defaultAISettings = {
+  provider: "",
+  apiKey: "",
+  model: "",
+  endpoint: "",
+};
+
 export function AIConfigurationDialog({
   open,
   onOpenChange,
   onSettingsChange,
 }: AIConfigurationDialogProps) {
   // AI 配置状态 - 使用持久化存储
-  const [settings, setSettings] = usePersistentAISettings({
-    provider: "",
-    apiKey: "",
-    model: "",
-    endpoint: "",
-  });
+  const [settings, setSettings] = usePersistentAISettings(defaultAISettings);
 
   // UI 状态
   const [showApiKey, setShowApiKey] = useState(false);

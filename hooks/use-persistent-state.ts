@@ -26,7 +26,7 @@ export function usePersistentState<K extends keyof StorageData>(
     setIsClient(true);
     const storedValue = storage.get(key, defaultValue);
     setState(storedValue);
-  }, [key, defaultValue]);
+  }, [key]); // 移除 defaultValue 依赖，避免无限循环
 
   // 防抖保存到 localStorage
   const debouncedSave = useCallback(
