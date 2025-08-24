@@ -15,6 +15,11 @@ import { createClashLanguageExtension } from "./clash-language-support";
 import { createClashCompletionProvider } from "./clash-completion-provider";
 import { createClashLinter } from "./clash-linter";
 import { createClashTheme } from "./clash-theme";
+import {
+  clearLineHighlight,
+  createLineHighlightExtension,
+  highlightLine,
+} from "./clash-line-highlight";
 
 export interface ClashRuleEditorProps {
   value: string;
@@ -69,6 +74,8 @@ export function ClashRuleEditor({
       // 语法检查
       createClashLinter(editorData),
       lintGutter(),
+      // 行高亮
+      createLineHighlightExtension(),
       // 主题
       createClashTheme(isDark, lineCount),
       // 键盘映射
@@ -138,6 +145,7 @@ export function ClashRuleEditor({
         createClashCompletionProvider(editorData),
         createClashLinter(editorData),
         lintGutter(),
+        createLineHighlightExtension(),
         createClashTheme(isDark, lineCount),
         keymap.of([indentWithTab, ...defaultKeymap]),
         EditorView.editable.of(!readOnly),
@@ -167,20 +175,16 @@ export function ClashRuleEditor({
 
   // 高亮指定行
   useEffect(() => {
-    if (editorViewRef.current && highlightedLine && highlightedLine > 0) {
-      try {
-        const line = editorViewRef.current.state.doc.line(highlightedLine);
-        if (line) {
-          // 滚动到指定行
-          editorViewRef.current.dispatch({
-            effects: EditorView.scrollIntoView(line.from, { y: "center" }),
-          });
-        }
-      } catch (error) {
-        console.warn("Failed to highlight line:", error);
+    if (editorViewRef.current) {
+      if (highlightedLine && highlightedLine > 0) {
+        // 高亮指定行
+        highlightLine(editorViewRef.current, highlightedLine, isDark);
+      } else {
+        // 清除高亮
+        clearLineHighlight(editorViewRef.current);
       }
     }
-  }, [highlightedLine]);
+  }, [highlightedLine, isDark]);
 
   return (
     <div className={cn("clash-rule-editor", className)}>

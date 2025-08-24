@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SettingsDialog } from "@/components/settings-dialog";
+import { AIConfigurationDialog } from "@/components/ai-configuration-dialog";
 import { HelpDialog } from "@/components/help-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
@@ -79,6 +80,7 @@ interface AISettings {
   provider: "openai" | "gemini" | "openai-compatible" | "";
   apiKey: string;
   model: string;
+  endpoint?: string;
 }
 
 function ClashRuleTester() {
@@ -216,8 +218,12 @@ function ClashRuleTester() {
     provider: "",
     apiKey: "",
     model: "",
+    endpoint: "",
   });
   const [isOptimizing, setIsOptimizing] = useState(false);
+
+  // AI 配置对话框状态
+  const [aiConfigOpen, setAiConfigOpen] = useState(false);
 
   // 统计信息
   const ruleCount = ruleEngine.getRuleCount();
@@ -472,6 +478,13 @@ function ClashRuleTester() {
 
           <div className="flex items-center gap-1">
             <HelpDialog />
+
+            {/* AI 配置按钮 */}
+            <AIConfigurationDialog
+              open={aiConfigOpen}
+              onOpenChange={setAiConfigOpen}
+              onSettingsChange={setAISettings}
+            />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

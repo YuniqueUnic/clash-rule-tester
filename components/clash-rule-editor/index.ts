@@ -23,7 +23,18 @@ export { createClashCompletionProvider } from "./clash-completion-provider";
 export { createClashLinter } from "./clash-linter";
 
 // 主题
-export { createClashTheme, createLineHighlightExtension } from "./clash-theme";
+export { createClashTheme } from "./clash-theme";
+
+// 行高亮
+export {
+  clearLineHighlight,
+  createLineHighlightExtension,
+  getCurrentHighlightedLine,
+  highlightLine,
+  lineHighlightEffect,
+  lineHighlightField,
+} from "./clash-line-highlight";
+export type { LineHighlightParams } from "./clash-line-highlight";
 
 // 数据 Hook
 export {

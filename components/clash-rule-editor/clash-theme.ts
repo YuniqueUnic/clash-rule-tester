@@ -1,6 +1,5 @@
 import { EditorView } from "@codemirror/view";
 import { Extension } from "@codemirror/state";
-import { Decoration } from "@codemirror/view";
 
 /**
  * 创建 Clash 规则编辑器主题
@@ -223,15 +222,4 @@ export function createClashTheme(
   }, { dark: isDark });
 
   return baseTheme;
-}
-
-/**
- * 创建行高亮扩展
- */
-export function createLineHighlightExtension() {
-  return EditorView.decorations.of(() => {
-    // 这里可以添加动态行高亮逻辑
-    // 现在返回空装饰集
-    return Decoration.none;
-  });
 }

@@ -42,7 +42,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // AI 配置相关的类型定义
 interface AISettings {
-  provider: string;
+  provider: "openai" | "gemini" | "openai-compatible" | "";
   apiKey: string;
   model: string;
   endpoint?: string;
