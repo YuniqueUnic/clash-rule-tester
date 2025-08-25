@@ -31,7 +31,7 @@
 在本地克隆项目并安装依赖：
 
 ```bash
-git clone https://github.com/your-username/clashruler.git
+git clone https://github.com/YuniqueUnic/clash-rule-tester.git
 cd clashruler
 pnpm install
 ```
@@ -41,15 +41,15 @@ pnpm install
 ### 开发模式
 
 ```bash
-pnpm run dev
+pnpm dev --port 4001
 ```
 
-应用程序将在 `http://localhost:3000` 启动。
+应用程序将在 `http://localhost:4001` 启动。
 
 ### 构建
 
 ```bash
-pnpm run build
+pnpm build
 ```
 
 这将在 `.next` 目录中生成生产构建版本。
