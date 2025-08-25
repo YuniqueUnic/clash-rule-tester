@@ -399,7 +399,7 @@ function ClashRuleTester() {
         totalTests: newTotalTests,
         averageTime: newAverageTime,
         successRate: newSuccessRate,
-        lastTestTime: Date.now(),
+        lastTestTime: duration,
       });
     } catch (error) {
       console.error("Test failed:", error);
