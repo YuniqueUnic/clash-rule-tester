@@ -54,6 +54,7 @@
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
     "@tanstack/react-table": "^8.21.3",
+    "@vercel/analytics": "^1.5.0",
     "ai": "latest",
     "autoprefixer": "^10.4.21",
     "class-variance-authority": "^0.7.1",
