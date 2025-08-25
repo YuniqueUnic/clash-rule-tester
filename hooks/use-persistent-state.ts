@@ -16,43 +16,22 @@ export function usePersistentState<K extends keyof StorageData>(
   key: K,
   defaultValue: StorageData[K],
   debounceMs: number = 500,
-): [StorageData[K], (value: StorageData[K]) => void] {
+): [
+  StorageData[K],
+  (value: StorageData[K] | ((prev: StorageData[K]) => StorageData[K])) => void,
+] {
   // 初始化状态 - 避免 SSR 不一致
   const [state, setState] = useState<StorageData[K]>(defaultValue);
   const [isClient, setIsClient] = useState(false);
 
-  // 调试日志
-  console.log(`🔧 [usePersistentState] Initializing for key: ${key}`, {
-    defaultValue,
-    debounceMs,
-  });
-
   // 在客户端加载存储的值
   useEffect(() => {
     setIsClient(true);
-    console.log(`🔧 [usePersistentState] Loading stored value for key: ${key}`);
-
     // 尝试获取存储的值，不传入 defaultValue
     const storedValue = storage.get(key);
-    console.log(`🔧 [usePersistentState] Retrieved stored value:`, {
-      key,
-      storedValue,
-      type: typeof storedValue,
-      isUndefined: storedValue === undefined,
-    });
-
     // 只有当存储值确实存在时才更新状态
     if (storedValue !== undefined) {
-      console.log(
-        `🔧 [usePersistentState] Updating state with stored value for key: ${key}`,
-        storedValue,
-      );
       setState(storedValue);
-    } else {
-      console.log(
-        `🔧 [usePersistentState] No stored value found for key: ${key}, keeping default:`,
-        defaultValue,
-      );
     }
     // 如果没有存储值，保持当前的 defaultValue 状态
   }, [key]); // 移除 defaultValue 依赖，避免无限循环
@@ -60,36 +39,28 @@ export function usePersistentState<K extends keyof StorageData>(
   // 防抖保存到 localStorage
   const debouncedSave = useCallback(
     debounce((value: StorageData[K]) => {
-      console.log(
-        `🔧 [usePersistentState] Executing debounced save for key: ${key}`,
-        value,
-      );
-      const success = storage.set(key, value);
-      console.log(`🔧 [usePersistentState] Save result for key: ${key}`, {
-        success,
-        value,
-        localStorage: typeof window !== "undefined"
-          ? localStorage.getItem(key)
-          : "N/A",
-      });
+      storage.set(key, value);
     }, debounceMs),
     [key, debounceMs],
   );
 
   // 更新状态并保存
-  const updateState = useCallback((value: StorageData[K]) => {
-    console.log(`🔧 [usePersistentState] Updating state for key: ${key}`, {
-      newValue: value,
-      previousState: state,
-    });
-    setState(value);
-    // 总是尝试保存，不检查 isClient，因为用户操作时肯定在客户端
-    console.log(
-      `🔧 [usePersistentState] Triggering debounced save for key: ${key}`,
-      value,
-    );
-    debouncedSave(value);
-  }, [debouncedSave, key, state]);
+  const updateState = useCallback(
+    (value: StorageData[K] | ((prev: StorageData[K]) => StorageData[K])) => {
+      // 处理函数形式的状态更新
+      let newState: StorageData[K];
+      if (typeof value === "function") {
+        newState = (value as (prev: StorageData[K]) => StorageData[K])(state);
+      } else {
+        newState = value;
+      }
+
+      setState(newState);
+      // 总是尝试保存，不检查 isClient，因为用户操作时肯定在客户端
+      debouncedSave(newState);
+    },
+    [debouncedSave, key, state],
+  );
 
   // 监听其他标签页的变化
   useEffect(() => {
