@@ -19,6 +19,10 @@ const nextConfig = {
   output: "export",
   trailingSlash: true,
   distDir: "out",
+  // 设置基础路径以支持二级目录部署
+  // 这个值将在构建时通过环境变量设置
+  // basePath: process.env.NEXT_BASE_PATH || "/tool/clashruler", // 移除 basePath 以适应 Vercel 根目录部署
+  // assetPrefix: process.env.NEXT_BASE_PATH || "/tool/clashruler", // 移除 assetPrefix 以适应 Vercel 根目录部署
   // 跳过静态生成过程中的优化步骤
   experimental: {
     optimizeCss: false,
