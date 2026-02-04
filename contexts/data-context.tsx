@@ -19,13 +19,6 @@ import {
   PolicyData,
 } from "@/lib/clash-data-sources";
 import { STORAGE_KEYS, storageManager } from "@/lib/storage-manager";
-import {
-  usePersistentDataASN,
-  usePersistentDataGeoIP,
-  usePersistentDataGeoSite,
-  usePersistentDataNetworkTypes,
-  usePersistentDataPolicies,
-} from "@/hooks/use-persistent-state";
 
 // 数据项接口
 export interface PolicyItem extends PolicyData {

@@ -41,7 +41,6 @@ import {
 } from "./clash-import-export";
 import type { HistoryActions } from "./clash-history";
 import {
-  formatClashRules,
   hasInlineComments,
   previewFormat,
 } from "./clash-formatter";
@@ -237,7 +236,7 @@ export function ClashEditorToolbar({
         title: "复制成功",
         description: "编辑器内容已复制到剪贴板",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "复制失败",
         description: "无法复制到剪贴板",
@@ -377,7 +376,7 @@ export function ClashEditorToolbar({
                         }))}
                     />
                     <Label htmlFor="removePrefix" className="text-sm">
-                      移除前缀 "- "
+                      移除前缀 “- ”
                     </Label>
                   </div>
 
@@ -476,7 +475,7 @@ export function ClashEditorToolbar({
                         }))}
                     />
                     <Label htmlFor="addPrefix" className="text-sm">
-                      每行都加上前缀 " - "
+                      每行都加上前缀 “ - ”
                     </Label>
                   </div>
                 </div>

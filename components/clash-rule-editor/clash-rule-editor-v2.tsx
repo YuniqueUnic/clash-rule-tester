@@ -144,6 +144,7 @@ export function ClashRuleEditor({
       view.destroy();
       editorViewRef.current = null;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // 只在组件挂载时初始化
 
   // 更新编辑器内容
@@ -208,7 +209,17 @@ export function ClashRuleEditor({
       });
       editorViewRef.current.dispatch(transaction);
     }
-  }, [isDark, editorData, lineCount, readOnly, minHeight, maxHeight, onChange]);
+  }, [
+    isDark,
+    editorData,
+    lineCount,
+    readOnly,
+    minHeight,
+    maxHeight,
+    onChange,
+    enableHistory,
+    debouncedSaveToHistory,
+  ]);
 
   // 高亮指定行
   useEffect(() => {

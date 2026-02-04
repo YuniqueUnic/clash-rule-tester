@@ -41,7 +41,7 @@ export function createClashLanguageSupport(
   policies: string[] = [],
 ): LanguageSupport {
   const clashLanguage = StreamLanguage.define({
-    token(stream: StringStream, state: any) {
+    token(stream: StringStream) {
       // 跳过空白字符
       if (stream.eatSpace()) return null;
 

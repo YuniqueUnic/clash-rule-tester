@@ -15,7 +15,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Keyboard, Loader2, Play, Plus, Zap } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 
 interface EnabledTestItems {
     domain: boolean;
@@ -142,8 +141,6 @@ export function RuleTester({
     newNetworkType,
     setNewNetworkType,
 }: RuleTesterProps) {
-    const { toast } = useToast();
-
     return (
         <div className="bg-card border border-border rounded-lg">
             <div className="p-4 border-b border-border">

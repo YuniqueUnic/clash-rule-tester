@@ -2,18 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertTriangle,
-  Download,
-  HelpCircle,
+  Github,
   Loader2,
   Monitor,
   Moon,
-  Settings,
   Sparkles,
   Sun,
-  Upload,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -34,22 +30,10 @@ import {
   type TestRequest,
 } from "@/lib/clash-rule-engine";
 import {
-  ClashDataSources,
   DEFAULT_ENABLED_TEST_ITEMS,
   DEFAULT_TEST_METRICS,
-  type EnabledTestItems,
-  GEOIP_COUNTRIES,
-  type GeoIPCountryData,
-  GEOSITE_CATEGORIES,
-  IP_TO_ASN_MAP,
-  IP_TO_COUNTRY_MAP,
-  NETWORK_TYPES,
-  type NetworkTypeData,
-  POLICIES,
-  type PolicyData,
   RULE_SETS,
   SAMPLE_RULES,
-  type TestMetrics as TestMetricsType,
 } from "@/lib/clash-data-sources";
 import { AIService } from "@/lib/ai-service";
 import {
@@ -75,26 +59,12 @@ import { RuleTester } from "@/components/right-column/rule-tester";
 import { TestHistory } from "@/components/right-column/test-history";
 import { TestMetrics } from "@/components/right-column/test-metrics";
 
-interface Policy {
-  id: string;
-  name: string;
-  comment?: string;
-  createdAt?: number;
-}
-
 interface TestHistory {
   id: string;
   timestamp: number;
   request: TestRequest;
   result: MatchResult | null;
   duration: number;
-}
-
-interface AISettings {
-  provider: "openai" | "gemini" | "openai-compatible" | "";
-  apiKey: string;
-  model: string;
-  endpoint?: string;
 }
 
 function ClashRuleTester() {
@@ -141,7 +111,6 @@ function ClashRuleTester() {
   const [rules, setRules] = usePersistentEditorContent(SAMPLE_RULES);
   const ruleEngine = useState(() => new ClashRuleEngine(rules))[0];
   const [matchResult, setMatchResult] = usePersistentAILastMatchResult(null);
-  const [matchResultExpanded, setMatchResultExpanded] = useState(true);
   const [highlightedLine, setHighlightedLine] = usePersistentHighlightedLine(
     null,
   );
@@ -153,8 +122,8 @@ function ClashRuleTester() {
   /// 1. 当我在编辑器中写了错误的语法时，我能看到错误提示
   /// 2. 但是当我又去点击其他地方的 UI，控件时，比如策略管理，然后新加了一个策略，我原本的错误的语法这时仍是存在的，但是 UI 上却没有错误提示了
   const validationResults = useMemo(() => {
-    return ruleEngine.validateRules();
-  }, [rules, ruleEngine]);
+    return new ClashRuleEngine(rules).validateRules();
+  }, [rules]);
 
   // 策略管理现在通过 DataContext 处理
 
@@ -233,7 +202,7 @@ function ClashRuleTester() {
     enabledASNData.map((asn) => [asn.ip, asn.asn]),
   );
 
-  const [ruleSetData, setRuleSetData] = useState<
+  const [ruleSetData] = useState<
     Record<string, (request: TestRequest) => boolean>
   >(
     () => RULE_SETS,
@@ -262,9 +231,7 @@ function ClashRuleTester() {
   // 自动测试
   const [autoTest, setAutoTest] = useState(false);
   const [autoTestDelayMs, setAutoTestDelayMs] = useState(500);
-  const [autoTestDelay, setAutoTestDelay] = useState<NodeJS.Timeout | null>(
-    null,
-  );
+  const autoTestTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 测试历史和指标 - 使用持久化存储
   const [testHistory, setTestHistory] = usePersistentTestHistory([]);
@@ -315,11 +282,6 @@ function ClashRuleTester() {
 
   // AI 配置对话框状态
   const [aiConfigOpen, setAiConfigOpen] = useState(false);
-
-  // 统计信息
-  const ruleCount = ruleEngine.getRuleCount();
-  const hasError = validationResults.length > 0;
-  const errorCount = validationResults.length;
 
   // AI 服务
   const aiService = new AIService(aiSettings);
@@ -383,23 +345,22 @@ function ClashRuleTester() {
         duration,
       };
 
-      setTestHistory([historyEntry, ...testHistory.slice(0, 49)]); // 保留最近 50 条
+      setTestHistory((prev: TestHistory[]) => [historyEntry, ...prev.slice(0, 49)]); // 保留最近 50 条
 
-      // 更新测试指标
-      const newTotalTests = testMetrics.totalTests + 1;
-      const newAverageTime =
-        (testMetrics.averageTime * testMetrics.totalTests + duration) /
-        newTotalTests;
-      const newSuccessRate = result
-        ? (testMetrics.successRate * testMetrics.totalTests + 100) /
-          newTotalTests
-        : (testMetrics.successRate * testMetrics.totalTests) / newTotalTests;
+      setTestMetrics((prev: typeof DEFAULT_TEST_METRICS) => {
+        const newTotalTests = prev.totalTests + 1;
+        const newAverageTime =
+          (prev.averageTime * prev.totalTests + duration) / newTotalTests;
+        const newSuccessRate = result
+          ? (prev.successRate * prev.totalTests + 100) / newTotalTests
+          : (prev.successRate * prev.totalTests) / newTotalTests;
 
-      setTestMetrics({
-        totalTests: newTotalTests,
-        averageTime: newAverageTime,
-        successRate: newSuccessRate,
-        lastTestTime: duration,
+        return {
+          totalTests: newTotalTests,
+          averageTime: newAverageTime,
+          successRate: newSuccessRate,
+          lastTestTime: duration,
+        };
       });
     } catch (error) {
       console.error("Test failed:", error);
@@ -426,44 +387,32 @@ function ClashRuleTester() {
     testUID,
     enabledTestItems, // 确保 enabledTestItems 在依赖数组中
     ruleEngine,
+    setHighlightedLine,
+    setMatchResult,
+    setTestHistory,
+    setTestMetrics,
     toast,
     isTestingInProgress,
   ]);
 
   // 自动测试效果
   useEffect(() => {
-    if (autoTest) {
-      if (autoTestDelay) {
-        clearTimeout(autoTestDelay);
-      }
-      const delay = setTimeout(() => {
-        testRules();
-      }, autoTestDelayMs);
-      setAutoTestDelay(delay);
+    if (!autoTest) return;
+
+    if (autoTestTimeoutRef.current) {
+      clearTimeout(autoTestTimeoutRef.current);
     }
+
+    autoTestTimeoutRef.current = setTimeout(() => {
+      testRules();
+    }, autoTestDelayMs);
+
     return () => {
-      if (autoTestDelay) {
-        clearTimeout(autoTestDelay);
-      }
+      if (!autoTestTimeoutRef.current) return;
+      clearTimeout(autoTestTimeoutRef.current);
+      autoTestTimeoutRef.current = null;
     };
-  }, [
-    testDomain,
-    testProcess,
-    testProcessPath,
-    testSrcIPv4,
-    testSrcIPv6,
-    testSrcPort,
-    testDstIPv4,
-    testDstIPv6,
-    testDstPort,
-    testGeoIP,
-    testNetwork,
-    testUID,
-    enabledTestItems, // 添加 enabledTestItems 到依赖数组
-    autoTest,
-    autoTestDelayMs,
-    testRules,
-  ]);
+  }, [autoTest, autoTestDelayMs, testRules]);
 
   // 键盘快捷键
   useEffect(() => {
@@ -624,7 +573,6 @@ function ClashRuleTester() {
             </DropdownMenu>
 
             <SettingsDialog
-              onSettingsChange={setAISettings}
               policies={policies}
               geoIPCountries={geoIPCountries}
               networkTypes={networkTypes}
@@ -651,6 +599,22 @@ function ClashRuleTester() {
               onToggleGeoSiteEnabled={toggleGeoSiteEnabled}
               onToggleASNEnabled={toggleASNEnabled}
             />
+
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="hover:bg-accent/80 transition-colors bg-transparent h-8 w-8 p-0"
+            >
+              <a
+                href="https://github.com/YuniqueUnic/clash-rule-tester"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="GitHub 仓库"
+              >
+                <Github className="h-4 w-4" />
+              </a>
+            </Button>
           </div>
         </div>
       </header>
@@ -735,7 +699,7 @@ function ClashRuleTester() {
                         } else {
                           throw new Error("Invalid format");
                         }
-                      } catch (error) {
+                      } catch {
                         toast({
                           title: "导入失败",
                           description: "文件格式不正确，请选择有效的策略文件",
@@ -810,8 +774,6 @@ function ClashRuleTester() {
             <Panel className="bg-card border-t border-border">
               <TestResult
                 matchResult={matchResult}
-                matchResultExpanded={true} // 始终展开，高度由分割器控制
-                onToggleExpanded={() => {}} // 不再需要切换功能
                 isTestingInProgress={isTestingInProgress}
                 ruleExplanation={ruleExplanation}
                 isExplaining={isExplaining}

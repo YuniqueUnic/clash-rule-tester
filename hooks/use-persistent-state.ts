@@ -3,7 +3,7 @@
  * 自动将状态同步到 localStorage
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { storage, STORAGE_KEYS, type StorageData } from "@/lib/storage-manager";
 
 /**
@@ -22,11 +22,9 @@ export function usePersistentState<K extends keyof StorageData>(
 ] {
   // 初始化状态 - 避免 SSR 不一致
   const [state, setState] = useState<StorageData[K]>(defaultValue);
-  const [isClient, setIsClient] = useState(false);
 
   // 在客户端加载存储的值
   useEffect(() => {
-    setIsClient(true);
     // 尝试获取存储的值，不传入 defaultValue
     const storedValue = storage.get(key);
     // 只有当存储值确实存在时才更新状态
@@ -37,29 +35,26 @@ export function usePersistentState<K extends keyof StorageData>(
   }, [key]); // 移除 defaultValue 依赖，避免无限循环
 
   // 防抖保存到 localStorage
-  const debouncedSave = useCallback(
-    debounce((value: StorageData[K]) => {
-      storage.set(key, value);
-    }, debounceMs),
-    [key, debounceMs],
+  const debouncedSave = useMemo(
+    () =>
+      debounce((value: StorageData[K]) => {
+        storage.set(key, value);
+      }, debounceMs),
+    [key, debounceMs]
   );
 
   // 更新状态并保存
   const updateState = useCallback(
     (value: StorageData[K] | ((prev: StorageData[K]) => StorageData[K])) => {
-      // 处理函数形式的状态更新
-      let newState: StorageData[K];
-      if (typeof value === "function") {
-        newState = (value as (prev: StorageData[K]) => StorageData[K])(state);
-      } else {
-        newState = value;
-      }
+      const newState =
+        typeof value === "function"
+          ? (value as (prevState: StorageData[K]) => StorageData[K])(state)
+          : value;
 
       setState(newState);
-      // 总是尝试保存，不检查 isClient，因为用户操作时肯定在客户端
       debouncedSave(newState);
     },
-    [debouncedSave, key, state],
+    [debouncedSave, state]
   );
 
   // 监听其他标签页的变化

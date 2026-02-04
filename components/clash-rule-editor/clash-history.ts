@@ -127,7 +127,7 @@ export function createHistoryManager(
 /**
  * React Hook for history management
  */
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 export function useHistoryManager(
   initialContent: string = "",
@@ -146,44 +146,41 @@ export function useHistoryManager(
   // 获取当前的 state 和 actions
   const [state, actions] = historyManager;
 
-  // 包装操作方法以触发重新渲染
-  const wrappedActions = useRef({
-    canUndo: false,
-    canRedo: false,
-
-    undo: () => {
-      const result = actions.undo();
-      triggerUpdate();
-      return result;
-    },
-
-    redo: () => {
-      const result = actions.redo();
-      triggerUpdate();
-      return result;
-    },
-
-    push: (content: string, description?: string) => {
-      actions.push(content, description);
-      triggerUpdate();
-    },
-
-    clear: () => {
-      actions.clear();
-      triggerUpdate();
-    },
-
-    getHistory: () => actions.getHistory(),
-    getCurrentEntry: () => actions.getCurrentEntry(),
-  });
-
-  // 更新状态属性
-  wrappedActions.current.canUndo = actions.canUndo;
-  wrappedActions.current.canRedo = actions.canRedo;
+  const wrappedActions = useMemo<HistoryActions>(
+    () => ({
+      get canUndo() {
+        return actions.canUndo;
+      },
+      get canRedo() {
+        return actions.canRedo;
+      },
+      undo: () => {
+        const result = actions.undo();
+        triggerUpdate();
+        return result;
+      },
+      redo: () => {
+        const result = actions.redo();
+        triggerUpdate();
+        return result;
+      },
+      push: (content: string, description?: string) => {
+        actions.push(content, description);
+        triggerUpdate();
+      },
+      clear: () => {
+        actions.clear();
+        triggerUpdate();
+      },
+      getHistory: () => actions.getHistory(),
+      getCurrentEntry: () => actions.getCurrentEntry(),
+    }),
+    [actions, triggerUpdate],
+  );
 
   return {
     historyState: state,
-    historyActions: wrappedActions.current,
+    historyActions: wrappedActions,
   };
 }
 
@@ -232,7 +229,6 @@ export function getContentDiff(oldContent: string, newContent: string): {
   }
 
   // 修改的行数 = 总变化 - 纯新增 - 纯删除
-  const totalChanges = Math.abs(newLines.length - oldLines.length);
   const linesModified = Math.max(0, Math.min(linesAdded, linesRemoved));
 
   return {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Download, HardDrive, Settings, Trash2, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 import { DataManager } from "@/components/data-management/data-manager";
 import {
   PolicyAddForm,
@@ -32,26 +31,16 @@ import {
 } from "@/components/data-management/geosite-forms";
 import {
   ASNAddForm,
-  ASNBulkImportForm,
   ASNEditForm,
 } from "@/components/data-management/asn-forms";
 import { ColumnDef } from "@tanstack/react-table";
 import {
   GeoIPCountryData,
-  GEOSITE_CATEGORIES,
-  IP_TO_ASN_MAP,
   NetworkTypeData,
   PolicyData,
 } from "@/lib/clash-data-sources";
 import { storage } from "@/lib/storage-manager";
 import { useToast } from "@/hooks/use-toast";
-
-interface AISettings {
-  provider: "openai" | "gemini" | "openai-compatible" | "";
-  apiKey: string;
-  model: string;
-  endpoint?: string;
-}
 
 // 数据管理相关接口
 interface PolicyItem extends PolicyData {
@@ -84,7 +73,6 @@ interface ASNItem {
 }
 
 interface SettingsDialogProps {
-  onSettingsChange: (settings: AISettings) => void;
   // 数据管理相关 props
   policies?: PolicyItem[];
   geoIPCountries?: GeoIPItem[];
@@ -119,7 +107,6 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({
-  onSettingsChange,
   policies = [],
   geoIPCountries = [],
   networkTypes = [],
@@ -147,255 +134,6 @@ export function SettingsDialog({
   onToggleASNEnabled,
 }: SettingsDialogProps) {
   const [open, setOpen] = useState(false);
-  const [settings, setSettings] = useState<AISettings>({
-    provider: "",
-    apiKey: "",
-    model: "",
-    endpoint: "",
-  });
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [isTestingConnection, setIsTestingConnection] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<
-    "idle" | "success" | "error"
-  >("idle");
-  const [connectionError, setConnectionError] = useState("");
-  const [customModel, setCustomModel] = useState("");
-  const [useCustomModel, setUseCustomModel] = useState(false);
-  const [customModels, setCustomModels] = useState<string[]>([]);
-  const [modelInputMode, setModelInputMode] = useState<"select" | "input">(
-    "select",
-  );
-  const [modelInputValue, setModelInputValue] = useState("");
-
-  useEffect(() => {
-    // Load settings from localStorage
-    const saved = localStorage.getItem("clash-ai-settings");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setSettings(parsed);
-        onSettingsChange(parsed);
-        const predefinedModels = getModelOptions()
-          .map((opt) => opt.value)
-          .filter((val) => val !== "custom");
-        if (parsed.model && !predefinedModels.includes(parsed.model)) {
-          setUseCustomModel(true);
-          setCustomModel(parsed.model);
-          setModelInputMode("input");
-          setModelInputValue(parsed.model);
-        }
-      } catch (error) {
-        console.error("Failed to parse saved settings:", error);
-      }
-    }
-
-    // Load custom models from localStorage
-    const savedCustomModels = localStorage.getItem("clash-custom-models");
-    if (savedCustomModels) {
-      try {
-        const parsed = JSON.parse(savedCustomModels);
-        setCustomModels(parsed);
-      } catch (error) {
-        console.error("Failed to parse saved custom models:", error);
-      }
-    }
-  }, [onSettingsChange]);
-
-  const saveSettings = () => {
-    localStorage.setItem("clash-ai-settings", JSON.stringify(settings));
-    localStorage.setItem("clash-custom-models", JSON.stringify(customModels));
-    onSettingsChange(settings);
-    setOpen(false);
-  };
-
-  const updateSettings = (key: keyof AISettings, value: string) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
-    setConnectionStatus("idle");
-  };
-
-  const handleModelChange = (value: string) => {
-    if (value === "custom") {
-      setModelInputMode("input");
-      setUseCustomModel(true);
-      setModelInputValue("");
-    } else {
-      setModelInputMode("select");
-      setUseCustomModel(false);
-      setModelInputValue(value);
-      updateSettings("model", value);
-    }
-  };
-
-  const handleCustomModelInput = (value: string) => {
-    setModelInputValue(value);
-    setCustomModel(value);
-    updateSettings("model", value);
-  };
-
-  const saveCustomModel = () => {
-    if (
-      modelInputValue.trim() && !customModels.includes(modelInputValue.trim())
-    ) {
-      const newCustomModels = [...customModels, modelInputValue.trim()];
-      setCustomModels(newCustomModels);
-      updateSettings("model", modelInputValue.trim());
-    }
-  };
-
-  const removeCustomModel = (modelToRemove: string) => {
-    const newCustomModels = customModels.filter((model) =>
-      model !== modelToRemove
-    );
-    setCustomModels(newCustomModels);
-    if (settings.model === modelToRemove) {
-      updateSettings("model", "");
-      setModelInputValue("");
-    }
-  };
-
-  const testConnection = async () => {
-    if (!settings.provider || !settings.apiKey || !settings.model) {
-      return;
-    }
-
-    setIsTestingConnection(true);
-    setConnectionStatus("idle");
-    setConnectionError("");
-
-    try {
-      const testPrompt = "测试连接";
-
-      // Simple test based on provider
-      let testUrl = "";
-      let testHeaders: Record<string, string> = {};
-      let testBody: any = {};
-
-      switch (settings.provider) {
-        case "openai":
-          testUrl = "https://api.openai.com/v1/chat/completions";
-          testHeaders = {
-            Authorization: `Bearer ${settings.apiKey}`,
-            "Content-Type": "application/json",
-          };
-          testBody = {
-            model: settings.model,
-            messages: [{ role: "user", content: testPrompt }],
-            max_tokens: 10,
-          };
-          break;
-        case "gemini":
-          testUrl =
-            `https://generativelanguage.googleapis.com/v1beta/models/${settings.model}:generateContent?key=${settings.apiKey}`;
-          testHeaders = {
-            "Content-Type": "application/json",
-          };
-          testBody = {
-            contents: [{ parts: [{ text: testPrompt }] }],
-          };
-          break;
-        case "openai-compatible":
-          if (!settings.endpoint) {
-            throw new Error("请配置 API 端点");
-          }
-          testUrl = `${settings.endpoint}/v1/chat/completions`;
-          testHeaders = {
-            Authorization: `Bearer ${settings.apiKey}`,
-            "Content-Type": "application/json",
-          };
-          testBody = {
-            model: settings.model,
-            messages: [{ role: "user", content: testPrompt }],
-            max_tokens: 10,
-          };
-          break;
-      }
-
-      const response = await fetch(testUrl, {
-        method: "POST",
-        headers: testHeaders,
-        body: JSON.stringify(testBody),
-      });
-
-      if (response.ok) {
-        setConnectionStatus("success");
-        if (
-          modelInputMode === "input" && modelInputValue.trim() &&
-          !customModels.includes(modelInputValue.trim())
-        ) {
-          saveCustomModel();
-        }
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error?.message ||
-            `HTTP ${response.status}: ${response.statusText}`,
-        );
-      }
-    } catch (error) {
-      setConnectionStatus("error");
-      setConnectionError(
-        error instanceof Error ? error.message : "连接测试失败",
-      );
-    } finally {
-      setIsTestingConnection(false);
-    }
-  };
-
-  const getModelOptions = () => {
-    switch (settings.provider) {
-      case "openai":
-        return [
-          { value: "gpt-4o", label: "GPT-4o (推荐)" },
-          { value: "gpt-4o-mini", label: "GPT-4o Mini" },
-          { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
-          { value: "gpt-4", label: "GPT-4" },
-          { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
-        ];
-      case "gemini":
-        return [
-          { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro (推荐)" },
-          { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
-          { value: "gemini-pro", label: "Gemini Pro" },
-        ];
-      case "openai-compatible":
-        return [
-          { value: "gpt-4o", label: "GPT-4o" },
-          { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
-          { value: "gpt-4", label: "GPT-4" },
-          { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
-          { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
-          { value: "claude-3-opus-20240229", label: "Claude 3 Opus" },
-          { value: "claude-3-sonnet-20240229", label: "Claude 3 Sonnet" },
-          { value: "claude-3-haiku-20240307", label: "Claude 3 Haiku" },
-          { value: "llama-3.1-70b-versatile", label: "Llama 3.1 70B" },
-          { value: "mixtral-8x7b-32768", label: "Mixtral 8x7B" },
-        ];
-      default:
-        return [];
-    }
-  };
-
-  const getEndpointPlaceholder = () => {
-    return "https://api.example.com 或 https://your-proxy.com/v1";
-  };
-
-  const isFormValid = () => {
-    const hasBasicConfig = settings.provider && settings.apiKey &&
-      settings.model;
-    if (settings.provider === "openai-compatible") {
-      return hasBasicConfig && settings.endpoint;
-    }
-    return hasBasicConfig;
-  };
-
-  const getAllModels = () => {
-    const predefined = getModelOptions();
-    const custom = customModels.map((model) => ({
-      value: model,
-      label: `${model} (自定义)`,
-    }));
-    return [...predefined, ...custom];
-  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -403,12 +141,9 @@ export function SettingsDialog({
         <Button
           variant="outline"
           size="icon"
-          className="relative bg-transparent hover:bg-accent/80 transition-colors rounded-md"
+          className="bg-transparent hover:bg-accent/80 transition-colors rounded-md"
         >
           <Settings className="h-4 w-4" />
-          {connectionStatus === "success" && (
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
-          )}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
@@ -779,7 +514,7 @@ function StorageManagement() {
         title: "导出成功",
         description: "数据已导出为 JSON 文件",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "导出失败",
         description: "无法导出数据",
@@ -814,7 +549,7 @@ function StorageManagement() {
                 variant: "destructive",
               });
             }
-          } catch (error) {
+          } catch {
             toast({
               title: "导入失败",
               description: "文件格式不正确",

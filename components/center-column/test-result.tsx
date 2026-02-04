@@ -14,7 +14,6 @@ import {
     Sparkles,
 } from "lucide-react";
 import type { MatchResult } from "@/lib/clash-rule-engine";
-import { useIsMobile } from "@/hooks/use-mobile";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -24,8 +23,6 @@ import { useToast } from "@/hooks/use-toast";
 
 interface TestResultProps {
     matchResult: MatchResult | null;
-    matchResultExpanded: boolean;
-    onToggleExpanded: () => void;
     isTestingInProgress: boolean;
     ruleExplanation: string;
     isExplaining: boolean;
@@ -35,15 +32,12 @@ interface TestResultProps {
 
 export function TestResult({
     matchResult,
-    matchResultExpanded,
-    onToggleExpanded,
     isTestingInProgress,
     ruleExplanation,
     isExplaining,
     onExplainRule,
     aiConfigured,
 }: TestResultProps) {
-    const isMobile = useIsMobile();
     const { toast } = useToast();
     const [isExplanationExpanded, setIsExplanationExpanded] = useState(true);
 
@@ -57,7 +51,7 @@ export function TestResult({
                 title: "复制成功",
                 description: "AI 解释内容已复制到剪贴板",
             });
-        } catch (error) {
+        } catch {
             toast({
                 title: "复制失败",
                 description: "无法复制到剪贴板",
