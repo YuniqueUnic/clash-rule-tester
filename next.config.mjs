@@ -1,11 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 启用构建时的 ESLint 检查
-  eslint: {
-    ignoreDuringBuilds: false,
-    // 在构建时检查所有目录
-    dirs: ["app", "components", "lib", "hooks", "contexts"],
-  },
   // 启用构建时的 TypeScript 类型检查
   typescript: {
     ignoreBuildErrors: false,

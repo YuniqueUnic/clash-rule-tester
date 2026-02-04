@@ -84,7 +84,6 @@ export function AIConfigurationDialog({
   >("idle");
   const [connectionError, setConnectionError] = useState("");
   const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [isLoadingModels, setIsLoadingModels] = useState(false);
 
   // 初始化模型输入值
   useEffect(() => {
@@ -208,7 +207,6 @@ export function AIConfigurationDialog({
   // 测试连接并获取模型列表
   const testConnection = async () => {
     setIsTestingConnection(true);
-    setIsLoadingModels(true);
     setConnectionStatus("idle");
     setConnectionError("");
     setAvailableModels([]);
@@ -222,6 +220,13 @@ export function AIConfigurationDialog({
         setConnectionStatus("success");
         setAvailableModels(result.models);
         console.log("Available models:", result.models);
+
+        const firstModel = result.models[0];
+        if (firstModel && (!settings.model || !result.models.includes(settings.model))) {
+          setSettings((prev: AISettings) => ({ ...prev, model: firstModel }));
+          setModelInputValue(firstModel);
+          setModelInputMode("select");
+        }
       } else {
         setConnectionStatus("error");
         setConnectionError(result.error || "连接测试失败");
@@ -231,7 +236,6 @@ export function AIConfigurationDialog({
       setConnectionError(error instanceof Error ? error.message : "未知错误");
     } finally {
       setIsTestingConnection(false);
-      setIsLoadingModels(false);
     }
   };
 
@@ -400,7 +404,7 @@ export function AIConfigurationDialog({
                               setModelInputValue(value);
                             }}
                           >
-                            <SelectTrigger className="hover:bg-accent/50 transition-colors rounded-md">
+                            <SelectTrigger className="w-full hover:bg-accent/50 transition-colors rounded-md">
                               <SelectValue placeholder="选择预设模型" />
                             </SelectTrigger>
                             <SelectContent>

@@ -13,6 +13,30 @@ interface ResizablePanelsProps {
   storageKey?: string; // localStorage键名，用于保存布局
 }
 
+function readSavedPanelSizes(
+  storageKey: string | undefined,
+  fallback: [number, number],
+  minSizes?: [number, number],
+): [number, number] {
+  if (!storageKey || typeof window === "undefined") return fallback;
+
+  const saved = window.localStorage.getItem(storageKey);
+  if (!saved) return fallback;
+
+  try {
+    const parsedSizes = JSON.parse(saved) as [number, number];
+    if (!Array.isArray(parsedSizes) || parsedSizes.length !== 2) return fallback;
+    if (minSizes && (parsedSizes[0] < minSizes[0] || parsedSizes[1] < minSizes[1])) {
+      return fallback;
+    }
+    if (Math.abs(parsedSizes[0] + parsedSizes[1] - 100) >= 0.1) return fallback;
+    return parsedSizes;
+  } catch (error) {
+    console.warn("Failed to parse saved panel sizes:", error);
+    return fallback;
+  }
+}
+
 export function ResizablePanels({
   children,
   direction = "vertical",
@@ -22,33 +46,12 @@ export function ResizablePanels({
   onResize,
   storageKey,
 }: ResizablePanelsProps) {
-  const [sizes, setSizes] = useState<[number, number]>(defaultSizes);
+  const [sizes, setSizes] = useState<[number, number]>(() =>
+    readSavedPanelSizes(storageKey, defaultSizes, minSizes),
+  );
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const splitterRef = useRef<HTMLDivElement>(null);
-
-  // 从localStorage恢复布局
-  useEffect(() => {
-    if (storageKey && typeof window !== "undefined") {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        try {
-          const parsedSizes = JSON.parse(saved) as [number, number];
-          if (
-            Array.isArray(parsedSizes) &&
-            parsedSizes.length === 2 &&
-            parsedSizes[0] >= minSizes[0] &&
-            parsedSizes[1] >= minSizes[1] &&
-            Math.abs(parsedSizes[0] + parsedSizes[1] - 100) < 0.1
-          ) {
-            setSizes(parsedSizes);
-          }
-        } catch (error) {
-          console.warn("Failed to parse saved panel sizes:", error);
-        }
-      }
-    }
-  }, [storageKey, minSizes]);
 
   // 保存布局到localStorage
   const saveSizes = useCallback(
@@ -219,23 +222,9 @@ export function usePanelSizes(
   defaultSizes: [number, number] = [60, 40],
   storageKey?: string
 ) {
-  const [sizes, setSizes] = useState<[number, number]>(defaultSizes);
-
-  useEffect(() => {
-    if (storageKey && typeof window !== "undefined") {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        try {
-          const parsedSizes = JSON.parse(saved) as [number, number];
-          if (Array.isArray(parsedSizes) && parsedSizes.length === 2) {
-            setSizes(parsedSizes);
-          }
-        } catch (error) {
-          console.warn("Failed to parse saved panel sizes:", error);
-        }
-      }
-    }
-  }, [storageKey]);
+  const [sizes, setSizes] = useState<[number, number]>(() =>
+    readSavedPanelSizes(storageKey, defaultSizes),
+  );
 
   const updateSizes = useCallback(
     (newSizes: [number, number]) => {

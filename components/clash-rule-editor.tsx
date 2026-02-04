@@ -1,10 +1,10 @@
 "use client";
 
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Download, Redo, Save, Undo, Upload } from "lucide-react";
+import { Download, Redo, Undo, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -15,8 +15,6 @@ import {
   Decoration,
   DecorationSet,
   EditorView,
-  ViewPlugin,
-  ViewUpdate,
 } from "@codemirror/view";
 import {
   EditorState,
@@ -28,9 +26,7 @@ import { basicSetup } from "codemirror";
 import { keymap } from "@codemirror/view";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import {
-  defaultHighlightStyle,
   HighlightStyle,
-  Language,
   LanguageSupport,
   StreamLanguage,
   syntaxHighlighting,
@@ -38,12 +34,9 @@ import {
 import { tags } from "@lezer/highlight";
 import {
   autocompletion,
-  CompletionContext,
-  CompletionResult,
 } from "@codemirror/autocomplete";
 import { Diagnostic, linter, lintGutter } from "@codemirror/lint";
 import { StringStream } from "@codemirror/language";
-import { oneDark } from "@codemirror/theme-one-dark";
 import { ClashDataSources } from "@/lib/clash-data-sources";
 
 // Clash 规则语法高亮器
@@ -59,7 +52,7 @@ const createClashLanguage = (
   policies: string[] = ["DIRECT", "PROXY", "REJECT", "PASS"],
 ) => {
   const clashLanguage = StreamLanguage.define({
-    token(stream: StringStream, state: any) {
+    token(stream: StringStream) {
       // 跳过空白字符
       if (stream.eatSpace()) return null;
 
@@ -439,7 +432,7 @@ const createClashLinter = (
               });
             } else {
               // 验证 IP 地址范围
-              const [ip, prefix] = content.split("/");
+              const [, prefix] = content.split("/");
               const prefixNum = parseInt(prefix);
               if (prefixNum < 0 || prefixNum > 32) {
                 diagnostics.push({
@@ -524,7 +517,7 @@ const createClashLinter = (
             // 验证正则表达式语法
             try {
               new RegExp(content);
-            } catch (e) {
+            } catch {
               diagnostics.push({
                 from: view.state.doc.line(index + 1).from +
                   line.indexOf(content),
@@ -589,12 +582,6 @@ const CLASH_RULE_TYPES = [
 ];
 
 const CLASH_POLICIES = ["DIRECT", "PROXY", "REJECT", "PASS"];
-
-// Clash 规则语法高亮器
-const clashHighlighting = EditorView.updateListener.of((update) => {
-  // 这里可以添加动态语法高亮逻辑
-  // 现在使用默认高亮
-});
 
 // 创建动态代码补全配置的函数
 const createClashCompletion = (
@@ -798,6 +785,28 @@ export function ClashRuleEditor({
   const [lineCount, setLineCount] = useState(1);
   const [history, setHistory] = useState<string[]>([value]);
   const [historyIndex, setHistoryIndex] = useState(0);
+
+  // 保存到历史记录
+  const saveToHistory = useCallback(
+    (newValue: string) => {
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(newValue);
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+    },
+    [history, historyIndex],
+  );
+
+  const onChangeRef = useRef(onChange);
+  const saveToHistoryRef = useRef(saveToHistory);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    saveToHistoryRef.current = saveToHistory;
+  }, [saveToHistory]);
   const { toast } = useToast();
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -805,14 +814,6 @@ export function ClashRuleEditor({
   useEffect(() => {
     const lines = value.split("\n").length;
     setLineCount(lines);
-  }, [value]);
-
-  useEffect(() => {
-    // 只在组件首次加载时初始化历史记录，避免 value 变化时重置
-    if (history.length === 0) {
-      setHistory([value]);
-      setHistoryIndex(0);
-    }
   }, [value]);
 
   // 初始化 CodeMirror 编辑器 - 只在组件挂载时创建一次
@@ -843,8 +844,8 @@ export function ClashRuleEditor({
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             const newValue = update.state.doc.toString();
-            onChange(newValue);
-            saveToHistory(newValue);
+            onChangeRef.current(newValue);
+            saveToHistoryRef.current(newValue);
           }
         }),
         // 设置编辑器高度和滚动 - 适应新的布局
@@ -883,6 +884,7 @@ export function ClashRuleEditor({
         }
       };
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // 空依赖数组，只在组件挂载时执行一次
 
   // 单独处理主题变化
@@ -908,8 +910,8 @@ export function ClashRuleEditor({
             EditorView.updateListener.of((update) => {
               if (update.docChanged) {
                 const newValue = update.state.doc.toString();
-                onChange(newValue);
-                saveToHistory(newValue);
+                onChangeRef.current(newValue);
+                saveToHistoryRef.current(newValue);
               }
             }),
             EditorView.theme({
@@ -986,14 +988,6 @@ export function ClashRuleEditor({
         description: "已恢复下一步操作",
       });
     }
-  };
-
-  // 保存到历史记录
-  const saveToHistory = (newValue: string) => {
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(newValue);
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
   };
 
   // 导入功能

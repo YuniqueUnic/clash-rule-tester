@@ -13,7 +13,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DialogFooter } from "@/components/ui/dialog";
-import { NetworkTypeData } from "@/lib/clash-data-sources";
 import { NetworkTypeItem } from "@/contexts/data-context";
 
 // 网络类型表单数据接口

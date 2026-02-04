@@ -1,5 +1,4 @@
 import { Diagnostic, linter } from "@codemirror/lint";
-import { Text } from "@codemirror/state";
 import { CLASH_RULE_TYPES } from "./clash-language-support";
 import type { ClashEditorData } from "./clash-completion-provider";
 
@@ -154,7 +153,7 @@ function validateRuleValue(
     case "DOMAIN-REGEX":
       try {
         new RegExp(ruleValue);
-      } catch (e) {
+      } catch {
         diagnostics.push({
           from: lineStart + valueStart,
           to: lineStart + valueEnd,

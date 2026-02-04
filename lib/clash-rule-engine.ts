@@ -219,18 +219,30 @@ export class ClashRuleEngine {
         break;
 
       case "GEOIP":
-        const geoIP = request.dstIPv4 || request.srcIPv4;
-        matched = geoIP ? this.matchGeoIP(geoIP, content) : false;
-        matchedContent = geoIP || "";
-        matchPosition = content;
-        explanation = matched
-          ? `IP "${geoIP}" is geolocated to "${content}"`
-          : `IP "${geoIP || "N/A"}" is not geolocated to "${content}"`;
-        detailedExplanation = matched
-          ? `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${geoIP} 被上述规则捕获，地理位置匹配：${content}`
-          : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${
-            geoIP || "N/A"
-          } 未被此规则匹配，地理位置不是：${content}`;
+        if (request.geoIP) {
+          matched = request.geoIP.toUpperCase() === content.toUpperCase();
+          matchedContent = request.geoIP;
+          matchPosition = content;
+          explanation = matched
+            ? `GeoIP "${request.geoIP}" matches "${content}"`
+            : `GeoIP "${request.geoIP}" does not match "${content}"`;
+          detailedExplanation = matched
+            ? `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：GeoIP 国家代码 ${request.geoIP} 匹配：${content}`
+            : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：GeoIP 国家代码 ${request.geoIP} 不匹配：${content}`;
+        } else {
+          const geoIP = request.dstIPv4 || request.srcIPv4;
+          matched = geoIP ? this.matchGeoIP(geoIP, content) : false;
+          matchedContent = geoIP || "";
+          matchPosition = content;
+          explanation = matched
+            ? `IP "${geoIP}" is geolocated to "${content}"`
+            : `IP "${geoIP || "N/A"}" is not geolocated to "${content}"`;
+          detailedExplanation = matched
+            ? `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${geoIP} 被上述规则捕获，地理位置匹配：${content}`
+            : `代码 line ${lineNumber}, ${ruleType},${content},${policy}; 说明：${
+              geoIP || "N/A"
+            } 未被此规则匹配，地理位置不是：${content}`;
+        }
         break;
 
       case "PROCESS-NAME":
@@ -571,8 +583,7 @@ export class ClashRuleEngine {
     return this._asnData[ip] === asn;
   }
 
-  // TODO: 需要采用真实的环境中的 GeoIP 数据库（GeoIP 数据源来自于 clashruler\components\right-column\rule-tester.tsx 的 line 485-525 部分
-  // 可以参考 page.tsx 在 578-589 行的代码，数据传入
+  // TODO: 需要采用真实环境中的 GeoSite 数据库
   private matchGeoSite(domain: string | undefined, category: string): boolean {
     if (!domain) return false;
 

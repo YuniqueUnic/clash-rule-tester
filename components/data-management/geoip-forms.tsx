@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DialogFooter } from "@/components/ui/dialog";
-import { GeoIPCountryData } from "@/lib/clash-data-sources";
 import { GeoIPItem } from "@/contexts/data-context";
 
 // GeoIP 表单数据接口

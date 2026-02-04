@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/select";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { PolicyData } from "@/lib/clash-data-sources";
 import { PolicyItem } from "@/contexts/data-context";
 
 // 策略表单数据接口

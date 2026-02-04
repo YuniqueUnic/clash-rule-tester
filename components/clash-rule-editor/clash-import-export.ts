@@ -38,7 +38,7 @@ export function exportRules(
   options: ExportOptions = DEFAULT_EXPORT_OPTIONS,
 ): void {
   const lines = content.split("\n");
-  let processedLines: string[] = [];
+  const processedLines: string[] = [];
 
   for (const line of lines) {
     const trimmed = line.trim();
