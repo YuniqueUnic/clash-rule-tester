@@ -27,6 +27,7 @@ pnpm start
 
 - 直接导入 GitHub 仓库即可（Framework 选择 Next.js）
 - 仓库根目录的 `vercel.json` 已按 Server 模式调整（不再输出到 `out/`）
+- 本仓库使用 pnpm `patchedDependencies`。若 Vercel 构建报 `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`：用 pnpm@9 重新生成 lockfile 并提交，或按官方文档启用 corepack 指定 pnpm 版本：https://vercel.com/docs/deployments/configure-a-build#corepack
 
 ---
 
