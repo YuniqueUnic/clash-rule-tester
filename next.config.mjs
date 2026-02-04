@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const isStaticExport = process.env.NEXT_PUBLIC_STATIC_DEPLOYMENT === "true";
+
 const nextConfig = {
   // 启用构建时的 TypeScript 类型检查
   typescript: {
@@ -9,10 +11,14 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // 静态导出配置
-  output: "export",
-  trailingSlash: true,
-  distDir: "out",
+  ...(isStaticExport
+    ? {
+      // 静态导出配置（注意：静态导出不支持 Route Handlers / Server Actions）
+      output: "export",
+      trailingSlash: true,
+      distDir: "out",
+    }
+    : {}),
   // 设置基础路径以支持二级目录部署
   // 这个值将在构建时通过环境变量设置
   // basePath: process.env.NEXT_BASE_PATH || "/tool/clashruler", // 移除 basePath 以适应 Vercel 根目录部署

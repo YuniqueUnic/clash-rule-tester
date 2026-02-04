@@ -4,10 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "predev": "pnpm geoip:download",
     "build": "next build",
+    "prebuild": "pnpm geoip:download",
     "build:static": "cross-env NEXT_BASE_PATH=$NEXT_BASE_PATH next build",
-    "export": "next build",
+    "export": "cross-env NEXT_PUBLIC_STATIC_DEPLOYMENT=true next build",
     "prebuild:static": "echo Building for base path: $NEXT_BASE_PATH",
+    "geoip:download": "node scripts/geoip/download-ip-to-country.mjs",
     "lint": "eslint .",
     "start": "next start",
     "deploy:prepare": "npm run build:static --base_path=$NEXT_BASE_PATH && echo Static build ready in ./out directory"
@@ -67,6 +70,7 @@
     "highlight.js": "^11.11.1",
     "input-otp": "1.4.2",
     "lucide-react": "0.563.0",
+    "mmdb-lib": "^3.0.2",
     "next": "16.1.6",
     "next-themes": "latest",
     "react": "^19.2.4",

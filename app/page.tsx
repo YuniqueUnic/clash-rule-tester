@@ -36,6 +36,7 @@ import {
   SAMPLE_RULES,
 } from "@/lib/clash-data-sources";
 import { AIService } from "@/lib/ai-service";
+import { validateRulesText } from "@/lib/clash-rule-validate";
 import {
   usePersistentAILastMatchResult,
   usePersistentAIRuleExplanation,
@@ -49,6 +50,7 @@ import {
   usePersistentUIState,
 } from "@/hooks/use-persistent-state";
 import { storage } from "@/lib/storage-manager";
+import { lookupCountryCodeFromIp } from "@/lib/geoip/ip-to-country";
 
 // 导入新的组件
 import { QuickRuleCreator } from "@/components/left-column/quick-rule-creator";
@@ -116,14 +118,34 @@ function ClashRuleTester() {
   );
   const [isTestingInProgress, setIsTestingInProgress] = useState(false);
 
-  // 验证结果
+  // 验证结果（统一复用规则校验模块，避免“编辑器 vs 页面”双轨分叉）
+  const validationContext = useMemo(
+    () => ({
+      policies: [
+        "DIRECT",
+        "PROXY",
+        "REJECT",
+        "PASS",
+        ...policies.filter((p) => p.enabled).map((p) => p.name),
+      ],
+      geoIPCountries: geoIPCountries.filter((c) => c.enabled).map((c) => c.code),
+      geoSiteCategories: geoSiteData.filter((s) => s.enabled).map((s) => s.category),
+      networkTypes: networkTypes.filter((n) => n.enabled).map((n) => n.type),
+      asnList: asnData.filter((a) => a.enabled).map((a) => a.asn),
+    }),
+    [policies, geoIPCountries, geoSiteData, networkTypes, asnData],
+  );
 
-  /// TODO: 存在问题需要修复：
-  /// 1. 当我在编辑器中写了错误的语法时，我能看到错误提示
-  /// 2. 但是当我又去点击其他地方的 UI，控件时，比如策略管理，然后新加了一个策略，我原本的错误的语法这时仍是存在的，但是 UI 上却没有错误提示了
-  const validationResults = useMemo(() => {
-    return new ClashRuleEngine(rules).validateRules();
-  }, [rules]);
+  const validationResults = useMemo(
+    () =>
+      validateRulesText(rules, validationContext).map((issue) => ({
+        lineNumber: issue.lineNumber,
+        rule: issue.rule,
+        error: issue.message,
+        severity: issue.severity,
+      })),
+    [rules, validationContext],
+  );
 
   // 策略管理现在通过 DataContext 处理
 
@@ -307,13 +329,27 @@ function ClashRuleTester() {
   ]);
 
   // 测试规则函数
-  const testRules = useCallback(() => {
+  const testRules = useCallback(async () => {
     if (isTestingInProgress) return;
 
     setIsTestingInProgress(true);
-    const startTime = performance.now();
 
     try {
+      // 离线 GeoIP 真实模式：优先从 IP 推导国家码，再用于 GEOIP 规则匹配
+      let resolvedGeoIP: string | undefined = enabledTestItems.geoIP
+        ? testGeoIP
+        : undefined;
+      if (enabledTestItems.geoIP) {
+        const ipForGeo =
+          (enabledTestItems.dstIP ? (testDstIPv4 || testDstIPv6) : undefined) ||
+          (enabledTestItems.srcIP ? (testSrcIPv4 || testSrcIPv6) : undefined);
+
+        if (ipForGeo) {
+          const code = await lookupCountryCodeFromIp(ipForGeo);
+          if (code) resolvedGeoIP = code;
+        }
+      }
+
       const testRequest: TestRequest = {
         domain: enabledTestItems.domain ? testDomain : undefined,
         process: enabledTestItems.process ? testProcess : undefined,
@@ -326,9 +362,10 @@ function ClashRuleTester() {
         dstIPv4: enabledTestItems.dstIP ? testDstIPv4 : undefined,
         dstIPv6: enabledTestItems.dstIP ? testDstIPv6 : undefined,
         dstPort: enabledTestItems.dstPort ? testDstPort : undefined,
-        geoIP: enabledTestItems.geoIP ? testGeoIP : undefined,
+        geoIP: resolvedGeoIP,
       };
 
+      const startTime = performance.now();
       const result = ruleEngine.testRequest(testRequest);
       const endTime = performance.now();
       const duration = endTime - startTime;

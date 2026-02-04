@@ -1,14 +1,4 @@
-import { generateText } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-
-interface AISettings {
-  provider: "openai" | "gemini" | "openai-compatible" | "";
-  apiKey: string;
-  model: string;
-  endpoint?: string;
-}
+import type { AISettings } from "@/lib/ai/types";
 
 export class AIService {
   private settings: AISettings;
@@ -37,45 +27,55 @@ export class AIService {
     return this.abortController !== null;
   }
 
-  private getModel() {
-    if (
-      !this.settings.provider || !this.settings.apiKey || !this.settings.model
-    ) {
-      throw new Error("AI service not properly configured");
+  private async postJson<TResponse>(
+    path: string,
+    body: unknown,
+    signal?: AbortSignal,
+  ): Promise<TResponse> {
+    const response = await fetch(path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal,
+    });
+
+    const data = (await response.json().catch(() => null)) as
+      | Record<string, unknown>
+      | null;
+
+    if (!response.ok) {
+      const message =
+        data && typeof data.error === "string"
+          ? data.error
+          : `HTTP ${response.status}: ${response.statusText}`;
+      throw new Error(message);
     }
 
-    switch (this.settings.provider) {
-      case "openai": {
-        // 为 OpenAI 创建自定义实例
-        const customOpenAI = createOpenAI({
-          apiKey: this.settings.apiKey,
-        });
-        return customOpenAI(this.settings.model);
-      }
-      case "gemini": {
-        // 为 Google Gemini 创建自定义实例
-        const customGoogle = createGoogleGenerativeAI({
-          apiKey: this.settings.apiKey,
-        });
-        return customGoogle(this.settings.model);
-      }
-      case "openai-compatible": {
-        if (!this.settings.endpoint) {
-          throw new Error(
-            "Endpoint is required for OpenAI-compatible providers",
-          );
-        }
-        // 为 OpenAI 兼容的 API 创建专用实例
-        const compatibleProvider = createOpenAICompatible({
-          name: "openai-compatible",
-          apiKey: this.settings.apiKey,
-          baseURL: this.settings.endpoint,
-        });
-        return compatibleProvider(this.settings.model);
-      }
-      default:
-        throw new Error(`Unsupported AI provider: ${this.settings.provider}`);
+    if (!data) {
+      throw new Error("服务端响应不是有效的 JSON");
     }
+
+    return data as TResponse;
+  }
+
+  private async generateTextViaApi(
+    prompt: string,
+    temperature: number,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const data = await this.postJson<{ text: string }>(
+      "/api/ai/generate",
+      {
+        settings: this.settings,
+        prompt,
+        temperature,
+      },
+      signal,
+    );
+
+    return data.text ?? "";
   }
 
   async optimizeRules(rules: string): Promise<string> {
@@ -121,13 +121,11 @@ ${rules}
 请返回优化后的规则，严格遵循上述格式要求。`;
 
     try {
-      const { text } = await generateText({
-        model: this.getModel(),
+      const text = await this.generateTextViaApi(
         prompt,
-        // maxTokens: 3000,
-        temperature: 0.3,
-        abortSignal: this.abortController.signal,
-      });
+        0.3,
+        this.abortController.signal,
+      );
 
       // 请求成功完成，清除 AbortController
       this.abortController = null;
@@ -219,29 +217,8 @@ ${rules}
 
 请用通俗易懂的语言解释，结合具体的测试场景，适合初学者和高级用户。`;
 
-    console.log(
-      "Enhanced prompt for AI explanation:",
-      prompt.slice(0, 200) + "...",
-    );
-
     try {
-      console.log("AI Service - Starting explanation with settings:", {
-        provider: this.settings.provider,
-        model: this.settings.model,
-        hasApiKey: !!this.settings.apiKey,
-        hasEndpoint: !!this.settings.endpoint,
-      });
-
-      const model = this.getModel();
-      console.log("AI Service - Model created successfully");
-
-      const { text } = await generateText({
-        model,
-        prompt,
-        temperature: 0.2,
-      });
-
-      console.log("AI Service - Text generated successfully");
+      const text = await this.generateTextViaApi(prompt, 0.2);
       return text;
     } catch (error) {
       console.error("AI explanation failed:", error);
@@ -281,12 +258,7 @@ ${purpose ? `用途: ${purpose}` : ""}
 只返回规则列表，每行一个规则。`;
 
     try {
-      const { text } = await generateText({
-        model: this.getModel(),
-        prompt,
-        // maxTokens: 600,
-        temperature: 0.4,
-      });
+      const text = await this.generateTextViaApi(prompt, 0.4);
 
       return text.split("\n").filter((line) =>
         line.trim() && !line.startsWith("#")
@@ -320,12 +292,7 @@ ${rules}
 请用中文回答，提供具体可行的建议。`;
 
     try {
-      const { text } = await generateText({
-        model: this.getModel(),
-        prompt,
-        // maxTokens: 1000,
-        temperature: 0.3,
-      });
+      const text = await this.generateTextViaApi(prompt, 0.3);
 
       return text;
     } catch (error) {
@@ -373,95 +340,21 @@ ${rules}
     }
 
     try {
-      console.log(
-        "Fetching available models for provider:",
-        this.settings.provider,
+      const data = await this.postJson<{ models: string[] }>(
+        "/api/ai/models",
+        {
+          settings: {
+            provider: this.settings.provider,
+            apiKey: this.settings.apiKey,
+            endpoint: this.settings.endpoint,
+          },
+        },
       );
 
-      switch (this.settings.provider) {
-        case "openai": {
-          const response = await fetch("https://api.openai.com/v1/models", {
-            headers: {
-              "Authorization": `Bearer ${this.settings.apiKey}`,
-              "Content-Type": "application/json",
-            },
-          });
-
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-          }
-
-          const data = await response.json();
-          const models = data.data?.map((model: any) => model.id) || [];
-
-          return {
-            success: true,
-            models: models.filter((id: string) =>
-              id.includes("gpt") || id.includes("text") ||
-              id.includes("davinci")
-            ),
-          };
-        }
-
-        case "gemini": {
-          const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models?key=${this.settings.apiKey}`,
-          );
-
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-          }
-
-          const data = await response.json();
-          const models = data.models?.map((model: any) =>
-            model.name.replace("models/", "")
-          ) || [];
-
-          return {
-            success: true,
-            models: models.filter((name: string) =>
-              name.includes("gemini")
-            ),
-          };
-        }
-
-        case "openai-compatible": {
-          if (!this.settings.endpoint) {
-            return {
-              success: false,
-              error: "Endpoint is required for OpenAI-compatible providers",
-            };
-          }
-
-          const modelsUrl = `${
-            this.settings.endpoint.replace(/\/+$/, "")
-          }/models`;
-          const response = await fetch(modelsUrl, {
-            headers: {
-              "Authorization": `Bearer ${this.settings.apiKey}`,
-              "Content-Type": "application/json",
-            },
-          });
-
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-          }
-
-          const data = await response.json();
-          const models = data.data?.map((model: any) => model.id) || [];
-
-          return {
-            success: true,
-            models,
-          };
-        }
-
-        default:
-          return {
-            success: false,
-            error: `Unsupported provider: ${this.settings.provider}`,
-          };
-      }
+      return {
+        success: true,
+        models: data.models ?? [],
+      };
     } catch (error) {
       console.error("Failed to fetch models:", error);
 

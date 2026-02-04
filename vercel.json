@@ -6,16 +6,7 @@
       "use": "@vercel/next"
     }
   ],
-  "buildCommand": "pnpm run export",
-  "outputDirectory": "out",
   "env": {
-    "NEXT_PUBLIC_STATIC_DEPLOYMENT": "true",
     "NEXT_PUBLIC_DEPLOYMENT_PLATFORM": "vercel"
-  },
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ]
+  }
 }

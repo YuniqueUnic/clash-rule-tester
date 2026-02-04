@@ -1,122 +1,64 @@
 # CLASH Rule Tester 静态部署指南
+# 部署说明
 
-本项目已配置为支持静态导出，可以部署到以下平台：
+本项目支持两种部署模式：
 
-## 部署平台
+1. **Server 模式（推荐）**：标准 Next.js 部署，支持 `app/api/*`（本项目的 AI 代理接口依赖该能力）。
+2. **Static Export 模式**：纯静态导出到 `out/`，适合 GitHub Pages / Cloudflare Pages；但不支持 Route Handlers，因此 **AI 服务端代理不可用**。
 
-### 1. Cloudflare Pages
+---
 
-#### 自动部署
-1. 将代码推送到 GitHub 仓库
-2. 登录 Cloudflare Dashboard
-3. 进入 Pages 部分，点击"创建项目"
-4. 连接你的 GitHub 仓库
-5. 使用以下配置：
-   - **构建命令**: `pnpm run export`
-   - **构建输出目录**: `out`
-   - **Node.js 版本**: `18` 或更高
+## 1) Server 模式（推荐：Vercel / Node）
 
-#### 手动部署
-使用提供的 `deploy/cloudflare-pages.toml` 配置文件。
+适用场景：
 
-### 2. GitHub Pages
+- 需要使用 AI 功能（`/api/ai/*`）
+- 希望在服务端统一做错误兜底、速率限制、审计等
 
-#### 使用 GitHub Actions
-1. 确保代码在 GitHub 仓库中
-2. 仓库设置中启用 GitHub Pages
-3. 使用提供的 `deploy/github-pages.yml` 工作流
-4. 推送代码到 `main` 分支将自动触发部署
-
-#### 本地部署
-```bash
-pnpm run export
-# 将 out 目录内容推送到 gh-pages 分支
-```
-
-### 3. Vercel
-
-#### 自动部署
-1. 将代码推送到 GitHub 仓库
-2. 登录 Vercel Dashboard
-3. 导入项目
-4. 使用提供的 `deploy/vercel.json` 配置
-
-#### 手动部署
-```bash
-pnpm run export
-# 使用 Vercel CLI 部署 out 目录
-vercel --prod
-```
-
-## 本地构建和测试
+构建与运行：
 
 ```bash
-# 安装依赖
 pnpm install
+pnpm run build
+pnpm start
+```
 
-# 构建静态文件
+### Vercel
+
+- 直接导入 GitHub 仓库即可（Framework 选择 Next.js）
+- 仓库根目录的 `vercel.json` 已按 Server 模式调整（不再输出到 `out/`）
+
+---
+
+## 2) Static Export 模式（纯静态：GitHub Pages / Cloudflare Pages）
+
+适用场景：
+
+- 只需要离线规则解析/校验/匹配能力
+- 不需要服务端 API（例如 AI 代理）
+
+构建：
+
+```bash
+pnpm install
 pnpm run export
-
-# 本地预览（需要静态服务器）
-pnpm add -g serve
-serve out -p 3000
 ```
 
-## 环境变量
+产物目录：`out/`
 
-各平台部署时需要设置以下环境变量：
+限制（Next 静态导出固有）：
 
-```env
-NEXT_PUBLIC_STATIC_DEPLOYMENT=true
-NEXT_PUBLIC_DEPLOYMENT_PLATFORM=[cloudflare|github|vercel]
-```
+- 不支持 Route Handlers / API 路由（因此本项目 AI 代理不可用）
+- 不支持 SSR / 中间件
 
-## 注意事项
+---
 
-1. **静态导出限制**：
-   - 不支持 API 路由
-   - 不支持服务器端渲染 (SSR)
-   - 不支持中间件
-   - 动态路由需要预生成
+## 3) GeoIP 离线数据库（构建前自动下载）
 
-2. **CodeMirror 配置**：
-   - 已配置为静态 bundle
-   - 所有主题和语言包已预先加载
+- 构建前会自动执行 `pnpm geoip:download`，生成 `public/geoip/ip-to-country.mmdb`
+- 注意该文件已加入 `.gitignore`，不会提交到仓库
 
-3. **路由处理**：
-   - 所有路由都重定向到 index.html
-   - 使用 HTML5 History API 处理导航
+许可与署名：
 
-## 故障排除
-
-### 构建失败
-- 检查 Node.js 版本是否 >= 18
-- 确保所有依赖已正确安装
-- 检查 TypeScript 类型错误
-
-### 部署后功能异常
-- 确认环境变量已正确设置
-- 检查浏览器控制台是否有错误信息
-- 验证静态资源是否正确加载
-
-### 路由问题
-- 确认服务器配置支持 SPA 路由
-- 检查重写规则是否正确配置
-- 验证 trailing slash 设置
-
-## 性能优化
-
-项目已包含以下优化：
-- 静态资源压缩
-- 代码分割
-- 预加载关键资源
-- 缓存策略配置
-
-## 安全配置
-
-所有平台配置都包含基本的安全头：
-- XSS 保护
-- 点击劫持防护
-- MIME 类型嗅探防护
-- 引用策略
-- 权限策略
+- GeoIP 数据来自 IPLocate free database（CC BY-SA 4.0，需要署名）
+- UI 与文档中已加入署名链接：`https://www.iplocate.io/free-databases`
