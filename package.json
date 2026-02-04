@@ -2,6 +2,11 @@
   "name": "my-v0-project",
   "version": "0.1.0",
   "private": true,
+  "pnpm": {
+    "patchedDependencies": {
+      "mmdb-lib@3.0.2": "patches/mmdb-lib@3.0.2.patch"
+    }
+  },
   "scripts": {
     "dev": "next dev",
     "predev": "pnpm geoip:download",

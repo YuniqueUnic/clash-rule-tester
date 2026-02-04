@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   mmdb-lib@3.0.2:
-    hash: f3fe923dc1ff29971ba98e10aee6f390a17aa4226b80d443f60b732589341065
+    hash: rcidrg3sp326qda545vbsx7vl4
     path: patches/mmdb-lib@3.0.2.patch
 
 importers:
@@ -180,7 +180,7 @@ importers:
         version: 0.563.0(react@19.2.4)
       mmdb-lib:
         specifier: ^3.0.2
-        version: 3.0.2(patch_hash=f3fe923dc1ff29971ba98e10aee6f390a17aa4226b80d443f60b732589341065)
+        version: 3.0.2(patch_hash=rcidrg3sp326qda545vbsx7vl4)
       next:
         specifier: 16.1.6
         version: 16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -5676,7 +5676,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.1(@typescript-eslint/parser@8.54.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.2(jiti@2.6.1)):
+  eslint-module-utils@2.12.1(@typescript-eslint/parser@8.54.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.2(jiti@2.6.1)))(eslint@9.39.2(jiti@2.6.1)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -5698,7 +5698,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.39.2(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.54.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.2(jiti@2.6.1))
+      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.54.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.2(jiti@2.6.1)))(eslint@9.39.2(jiti@2.6.1))
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
@@ -6691,7 +6691,7 @@ snapshots:
 
   minimist@1.2.8: {}
 
-  mmdb-lib@3.0.2(patch_hash=f3fe923dc1ff29971ba98e10aee6f390a17aa4226b80d443f60b732589341065): {}
+  mmdb-lib@3.0.2(patch_hash=rcidrg3sp326qda545vbsx7vl4): {}
 
   ms@2.1.3: {}
 
