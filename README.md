@@ -6,8 +6,8 @@
 
 - **编辑器 + 校验统一**：CodeMirror linter 与页面“验证结果”复用同一套解析/校验逻辑（避免“双轨分叉”）
 - **规则测试**：输入 domain / process / src/dst IP/port / network / uid 等，查看命中规则与解释
-- **GeoIP 真实模式（离线库）**：IP -> 国家码 -> `GEOIP` 规则匹配（仅 Server 模式可用）
-- **AI 助手**：一键优化规则 / 解释命中原因（OpenAI / Gemini / OpenAI-compatible，仅 Server 模式可用）
+- **GeoIP 真实模式（离线库）**：IP -> 国家码 -> `GEOIP` 规则匹配（Server 模式服务端查询；Static Export 也可用但会下载 mmdb）
+- **AI 助手**：一键优化规则 / 解释命中原因（Server 模式推荐走同源 `/api` 代理；Static Export 可选浏览器直连）
 - **数据管理**：Policy / GeoSite / ASN 等数据源管理与启用开关
 
 ## 🚀 快速开始
@@ -42,7 +42,7 @@ pnpm start
 
 ### 2) Static Export 模式（纯静态）
 
-导出到 `out/`（注意：静态导出不支持 Route Handlers，因此 **AI / GeoIP 功能不可用**）：
+导出到 `out/`（注意：静态导出不支持 Route Handlers，因此同源 `/api/*` 代理不可用）：
 
 ```bash
 pnpm export
@@ -52,7 +52,10 @@ pnpm export
 
 ## 🔐 安全提示
 
-- AI Key 会保存在浏览器本地存储，并通过同源 `/api/ai/*` 由服务端转发到提供商；请勿在共享设备/公开环境中填写敏感 Key。
+- AI Key 会保存在浏览器本地存储：
+  - Server 模式：通过同源 `/api/ai/*` 由服务端转发到提供商（推荐）
+  - Static Export：浏览器会直连第三方接口（可能被 CORS 阻止，且 Key 暴露面更大）
+- 请勿在共享设备/公开环境中填写敏感 Key；优先使用可撤销/限额的 Key。
 
 ## 📚 文档
 

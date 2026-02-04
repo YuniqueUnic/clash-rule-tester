@@ -4,7 +4,7 @@
 本项目支持两种部署模式：
 
 1. **Server 模式（推荐）**：标准 Next.js 部署，支持 `app/api/*`（本项目的 AI 代理接口依赖该能力）。
-2. **Static Export 模式**：纯静态导出到 `out/`，适合 GitHub Pages / Cloudflare Pages；但不支持 Route Handlers，因此 **AI 服务端代理不可用**。
+2. **Static Export 模式**：纯静态导出到 `out/`，适合 GitHub Pages / Cloudflare Pages；不支持 Route Handlers，因此同源 `/api/*` 代理不可用，但本项目提供 **浏览器直连 AI（可选）** 与 **浏览器本地 GeoIP** 的降级方案。
 
 ---
 
@@ -34,8 +34,8 @@ pnpm start
 
 适用场景：
 
-- 只需要离线规则解析/校验/匹配能力
-- 不需要服务端 API（例如 AI 代理）
+- 需要离线规则解析/校验/匹配能力
+- 不方便部署 Node/Serverless，但仍希望使用 GeoIP（本地 mmdb）与 AI（浏览器直连，可能受 CORS 限制）
 
 构建：
 
@@ -55,8 +55,8 @@ pnpm run export
 
 ## 3) GeoIP 离线数据库（构建前自动下载）
 
-- 构建前会自动执行 `pnpm geoip:download`，生成 `public/geoip/ip-to-country.mmdb`
-- 注意该文件已加入 `.gitignore`，不会提交到仓库
+- 构建前会自动执行 `pnpm geoip:download`，生成/更新 `public/geoip/ip-to-country.mmdb`
+- 推荐将该文件直接提交到仓库（静态部署不依赖构建期网络下载）
 
 许可与署名：
 

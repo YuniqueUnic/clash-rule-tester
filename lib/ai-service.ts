@@ -1,5 +1,29 @@
 import type { AISettings } from "@/lib/ai/types";
 
+const isStaticExport = process.env.NEXT_PUBLIC_STATIC_DEPLOYMENT === "true";
+
+function normalizeBaseUrl(raw: string): string {
+  return raw.replace(/\/+$/, "");
+}
+
+function isLikelyCorsOrNetworkError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return (
+    error.name === "TypeError" ||
+    error.message.toLowerCase().includes("failed to fetch")
+  );
+}
+
+function formatStaticModeHint(provider: AISettings["provider"]): string {
+  const hint =
+    "静态导出模式下，浏览器会直连第三方 API（可能被 CORS 阻止且会暴露 Key）。推荐使用 Server 模式部署，或使用支持 CORS 的 openai-compatible endpoint（自建代理/网关）。";
+
+  if (provider === "openai-compatible") return hint;
+  if (provider === "openai") return `${hint}（OpenAI 官方接口通常不允许浏览器跨域直连）`;
+  if (provider === "gemini") return `${hint}（Gemini 直连也可能遇到 CORS/网络限制）`;
+  return hint;
+}
+
 export class AIService {
   private settings: AISettings;
 
@@ -78,6 +102,116 @@ export class AIService {
     return data.text ?? "";
   }
 
+  private async generateTextDirect(
+    prompt: string,
+    temperature: number,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const provider = this.settings.provider;
+
+    if (!provider) throw new Error("provider 未配置");
+    if (!this.settings.apiKey) throw new Error("apiKey 未配置");
+    if (!this.settings.model) throw new Error("model 未配置");
+
+    try {
+      if (provider === "gemini") {
+        const url =
+          `https://generativelanguage.googleapis.com/v1beta/models/${
+            encodeURIComponent(this.settings.model)
+          }:generateContent?key=${encodeURIComponent(this.settings.apiKey)}`;
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: { temperature },
+          }),
+          signal,
+        });
+
+        const data = (await response.json().catch(() => null)) as
+          | Record<string, unknown>
+          | null;
+
+        if (!response.ok) {
+          const message =
+            (data as any)?.error?.message ||
+            (data as any)?.error ||
+            `HTTP ${response.status}: ${response.statusText}`;
+          throw new Error(String(message));
+        }
+
+        const candidates = (data as any)?.candidates as any[] | undefined;
+        const parts = candidates?.[0]?.content?.parts as any[] | undefined;
+        const text = parts
+          ?.map((p) => (typeof p?.text === "string" ? p.text : ""))
+          .filter(Boolean)
+          .join("\n");
+
+        if (typeof text === "string") return text;
+        throw new Error("Gemini 响应格式不正确");
+      }
+
+      const baseUrl = provider === "openai"
+        ? "https://api.openai.com/v1"
+        : normalizeBaseUrl(this.settings.endpoint ?? "");
+
+      if (provider === "openai-compatible" && !baseUrl) {
+        throw new Error("openai-compatible 需要填写 endpoint");
+      }
+
+      const response = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.settings.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: this.settings.model,
+          messages: [{ role: "user", content: prompt }],
+          temperature,
+        }),
+        signal,
+      });
+
+      const data = (await response.json().catch(() => null)) as
+        | Record<string, unknown>
+        | null;
+
+      if (!response.ok) {
+        const message =
+          (data as any)?.error?.message ||
+          (data as any)?.error ||
+          `HTTP ${response.status}: ${response.statusText}`;
+        throw new Error(String(message));
+      }
+
+      const text = (data as any)?.choices?.[0]?.message?.content ??
+        (data as any)?.choices?.[0]?.text;
+      if (typeof text === "string") return text;
+      throw new Error("OpenAI 响应格式不正确");
+    } catch (error) {
+      if (isLikelyCorsOrNetworkError(error)) {
+        throw new Error(
+          `AI 直连失败（可能是 CORS/网络限制）：${error instanceof Error ? error.message : "未知错误"}\n${formatStaticModeHint(provider)}`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  private async generateText(
+    prompt: string,
+    temperature: number,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    if (isStaticExport) {
+      return this.generateTextDirect(prompt, temperature, signal);
+    }
+    return this.generateTextViaApi(prompt, temperature, signal);
+  }
+
   async optimizeRules(rules: string): Promise<string> {
     if (!this.isConfigured()) {
       throw new Error("AI service not configured");
@@ -121,7 +255,7 @@ ${rules}
 请返回优化后的规则，严格遵循上述格式要求。`;
 
     try {
-      const text = await this.generateTextViaApi(
+      const text = await this.generateText(
         prompt,
         0.3,
         this.abortController.signal,
@@ -218,7 +352,7 @@ ${rules}
 请用通俗易懂的语言解释，结合具体的测试场景，适合初学者和高级用户。`;
 
     try {
-      const text = await this.generateTextViaApi(prompt, 0.2);
+      const text = await this.generateText(prompt, 0.2);
       return text;
     } catch (error) {
       console.error("AI explanation failed:", error);
@@ -258,7 +392,7 @@ ${purpose ? `用途: ${purpose}` : ""}
 只返回规则列表，每行一个规则。`;
 
     try {
-      const text = await this.generateTextViaApi(prompt, 0.4);
+      const text = await this.generateText(prompt, 0.4);
 
       return text.split("\n").filter((line) =>
         line.trim() && !line.startsWith("#")
@@ -292,7 +426,7 @@ ${rules}
 请用中文回答，提供具体可行的建议。`;
 
     try {
-      const text = await this.generateTextViaApi(prompt, 0.3);
+      const text = await this.generateText(prompt, 0.3);
 
       return text;
     } catch (error) {
@@ -340,6 +474,11 @@ ${rules}
     }
 
     try {
+      if (isStaticExport) {
+        const models = await this.getAvailableModelsDirect();
+        return { success: true, models };
+      }
+
       const data = await this.postJson<{ models: string[] }>(
         "/api/ai/models",
         {
@@ -358,12 +497,96 @@ ${rules}
     } catch (error) {
       console.error("Failed to fetch models:", error);
 
+      const provider = this.settings.provider;
+      if (isStaticExport && isLikelyCorsOrNetworkError(error)) {
+        return {
+          success: false,
+          error:
+            `模型列表直连失败（可能是 CORS/网络限制）：${
+              error instanceof Error ? error.message : "未知错误"
+            }\n${formatStaticModeHint(provider)}`,
+        };
+      }
+
       const errorMessage = error instanceof Error ? error.message : "未知错误";
       return {
         success: false,
         error: errorMessage,
       };
     }
+  }
+
+  private async getAvailableModelsDirect(): Promise<string[]> {
+    const provider = this.settings.provider;
+    if (!provider) throw new Error("provider 未配置");
+    if (!this.settings.apiKey) throw new Error("apiKey 未配置");
+
+    if (provider === "gemini") {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${
+          encodeURIComponent(this.settings.apiKey)
+        }`,
+      );
+
+      const data = (await response.json().catch(() => null)) as
+        | Record<string, unknown>
+        | null;
+
+      if (!response.ok) {
+        const message =
+          (data as any)?.error?.message ||
+          (data as any)?.error ||
+          `HTTP ${response.status}: ${response.statusText}`;
+        throw new Error(String(message));
+      }
+
+      const models = (
+        (data as any)?.models as Array<{ name?: string }> | undefined
+      )?.map((model) => model.name?.replace("models/", "")).filter((
+        name,
+      ): name is string => typeof name === "string") ?? [];
+
+      return models.filter((name) => name.includes("gemini"));
+    }
+
+    const baseUrl = provider === "openai"
+      ? "https://api.openai.com/v1"
+      : normalizeBaseUrl(this.settings.endpoint ?? "");
+
+    if (provider === "openai-compatible" && !baseUrl) {
+      throw new Error("openai-compatible 需要填写 endpoint");
+    }
+
+    const response = await fetch(`${baseUrl}/models`, {
+      headers: {
+        Authorization: `Bearer ${this.settings.apiKey}`,
+      },
+    });
+
+    const data = (await response.json().catch(() => null)) as
+      | Record<string, unknown>
+      | null;
+
+    if (!response.ok) {
+      const message =
+        (data as any)?.error?.message ||
+        (data as any)?.error ||
+        `HTTP ${response.status}: ${response.statusText}`;
+      throw new Error(String(message));
+    }
+
+    const models = (data as any)?.data as Array<{ id?: string }> | undefined;
+    const ids = models?.map((m) => m.id).filter((
+      id,
+    ): id is string => typeof id === "string") ?? [];
+
+    if (provider === "openai") {
+      return ids.filter((id) =>
+        id.includes("gpt") || id.includes("text") || id.includes("davinci")
+      );
+    }
+
+    return ids;
   }
 
   async testConnection(): Promise<{ success: boolean; error?: string }> {

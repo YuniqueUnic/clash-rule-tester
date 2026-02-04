@@ -177,6 +177,3 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .ace-tool/
-
-# GeoIP offline database (downloaded)
-public/geoip/ip-to-country.mmdb

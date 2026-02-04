@@ -1,0 +1,67 @@
+diff --git a/lib/ip.js b/lib/ip.js
+index 3b7ddd4fbb667bd4e2527a27a7ad7674ae62c31b..f0d489612caac7e302773bd9c124f2f37a5aa34e 100644
+--- a/lib/ip.js
++++ b/lib/ip.js
+@@ -3,7 +3,17 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
+     return (mod && mod.__esModule) ? mod : { "default": mod };
+ };
+ Object.defineProperty(exports, "__esModule", { value: true });
+-const net_1 = __importDefault(require("net"));
++const isValidIPv4 = (input) => {
++    const parts = input.split('.', 4);
++    if (parts.length !== 4)
++        return false;
++    return parts.every((part) => {
++        if (!part || !/^\d+$/.test(part))
++            return false;
++        const n = Number(part);
++        return n >= 0 && n <= 255;
++    });
++};
+ const parseIPv4 = (input) => {
+     const ip = input.split('.', 4);
+     const o0 = parseInt(ip[0]);
+@@ -59,8 +69,41 @@ const bitAt = (rawAddress, idx) => {
+     return (rawAddress[bufIdx] >>> bitIdx) & 1;
+ };
+ const validate = (ip) => {
+-    const version = net_1.default.isIP(ip);
+-    return version === 4 || version === 6;
++    if (!ip)
++        return false;
++    if (ip.indexOf(':') === -1) {
++        return isValidIPv4(ip);
++    }
++    // Handle embedded IPv4, e.g. ::ffff:64.17.254.216
++    let normalized = ip;
++    if (normalized.indexOf('.') > -1) {
++        const lastColon = normalized.lastIndexOf(':');
++        if (lastColon === -1)
++            return false;
++        const ipv4Part = normalized.slice(lastColon + 1);
++        if (!isValidIPv4(ipv4Part))
++            return false;
++        const octets = ipv4Part.split('.').map((x) => Number.parseInt(x, 10));
++        if (octets.some((n) => Number.isNaN(n)))
++            return false;
++        const h1 = ((octets[0] << 8) | octets[1]).toString(16);
++        const h2 = ((octets[2] << 8) | octets[3]).toString(16);
++        normalized = `${normalized.slice(0, lastColon)}:${h1}:${h2}`;
++    }
++    const segments = normalized.split('::');
++    if (segments.length > 2)
++        return false;
++    const left = segments[0] ? segments[0].split(':') : [];
++    const right = segments.length === 2 && segments[1] ? segments[1].split(':') : [];
++    const isValidHextet = (value) => /^[0-9a-fA-F]{1,4}$/.test(value);
++    if (left.some((value) => !isValidHextet(value)))
++        return false;
++    if (right.some((value) => !isValidHextet(value)))
++        return false;
++    if (segments.length === 1) {
++        return left.length === 8;
++    }
++    return left.length + right.length < 8;
+ };
+ exports.default = {
+     bitAt,
