@@ -40,15 +40,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AIService } from "@/lib/ai-service";
+import type { AISettings } from "@/lib/ai/types";
 import { usePersistentAISettings } from "@/hooks/use-persistent-state";
-
-// AI 配置相关的类型定义
-interface AISettings {
-  provider: "openai" | "gemini" | "openai-compatible" | "";
-  apiKey: string;
-  model: string;
-  endpoint?: string;
-}
 
 interface AIConfigurationDialogProps {
   open: boolean;
@@ -219,7 +212,6 @@ export function AIConfigurationDialog({
       if (result.success && result.models) {
         setConnectionStatus("success");
         setAvailableModels(result.models);
-        console.log("Available models:", result.models);
 
         const firstModel = result.models[0];
         if (firstModel && (!settings.model || !result.models.includes(settings.model))) {

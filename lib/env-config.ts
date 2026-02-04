@@ -51,7 +51,7 @@ export interface EnvConfig {
 
 // 默认环境变量配置
 export const defaultEnvConfig: EnvConfig = {
-  NEXT_PUBLIC_STATIC_DEPLOYMENT: 'true',
+  NEXT_PUBLIC_STATIC_DEPLOYMENT: 'false',
   NEXT_PUBLIC_DEPLOYMENT_PLATFORM: 'unknown',
   NEXT_PUBLIC_BASE_URL: '',
   NEXT_PUBLIC_AI_PROVIDER: '',

@@ -210,8 +210,20 @@ export function HelpDialog() {
           </Card>
 
           <div className="flex items-center justify-between pt-4 border-t">
-            <div className="text-sm text-muted-foreground">
-              更多信息，请访问官方 CLASH 文档
+            <div className="text-sm text-muted-foreground space-y-1">
+              <div>更多信息，请访问官方 CLASH 文档</div>
+              <div className="text-xs">
+                GeoIP 数据来源：
+                <a
+                  href="https://www.iplocate.io/free-databases"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-4 hover:text-foreground"
+                >
+                  IPLocate.io
+                </a>{" "}
+                （CC BY-SA 4.0）
+              </div>
             </div>
             <Button variant="outline" size="sm" asChild>
               <a

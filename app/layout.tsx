@@ -36,7 +36,7 @@ html {
           dangerouslySetInnerHTML={{
             __html: `
               window.__ENV__ = {
-                NEXT_PUBLIC_STATIC_DEPLOYMENT: '${process.env.NEXT_PUBLIC_STATIC_DEPLOYMENT || 'true'}',
+                NEXT_PUBLIC_STATIC_DEPLOYMENT: '${process.env.NEXT_PUBLIC_STATIC_DEPLOYMENT || 'false'}',
                 NEXT_PUBLIC_DEPLOYMENT_PLATFORM: '${process.env.NEXT_PUBLIC_DEPLOYMENT_PLATFORM || 'unknown'}',
                 NEXT_PUBLIC_BASE_URL: '${process.env.NEXT_PUBLIC_BASE_URL || ''}',
                 NEXT_PUBLIC_AI_PROVIDER: '${process.env.NEXT_PUBLIC_AI_PROVIDER || ''}',

@@ -1,4 +1,5 @@
-import { CLASH_POLICIES, CLASH_RULE_TYPES } from "@/lib/clash-data-sources";
+import { parseRulesText } from "@/lib/clash-rule-parse";
+import { validateRulesText } from "@/lib/clash-rule-validate";
 
 export interface TestRequest {
   domain?: string;
@@ -31,6 +32,7 @@ export interface MatchResult {
 }
 
 export class ClashRuleEngine {
+  private rulesText = "";
   private rules: ParsedRule[] = [];
   private _geoIPDatabase: Record<string, string> = {};
   private _geoSiteData: Record<string, string[]> = {};
@@ -47,31 +49,28 @@ export class ClashRuleEngine {
   }
 
   private parseRules(rulesText: string) {
-    const lines = rulesText.split("\n");
+    this.rulesText = rulesText;
     this.rules = [];
 
-    lines.forEach((line, index) => {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) return;
+    for (const parsed of parseRulesText(rulesText)) {
+      if (parsed.kind !== "rule" || !parsed.ruleType) continue;
 
-      const parts = trimmed.split(",");
-      if (parts.length < 2) return;
+      const ruleType = parsed.ruleType;
+      const policy = parsed.policy?.trim() || "DIRECT";
+      const content = parsed.content?.trim() || "";
 
-      const ruleType = parts[0].trim();
-      const content = parts[1].trim();
-      const policy = parts.length > 2
-        ? parts.slice(2).join(",").trim()
-        : "DIRECT";
+      // 对于匹配执行，缺少 content 的规则没有意义；但校验会通过 rulesText 给出错误
+      if (!content && ruleType !== "MATCH") continue;
 
       this.rules.push({
-        original: line,
-        lineNumber: index + 1,
+        original: parsed.original,
+        lineNumber: parsed.lineNumber,
         ruleType,
         content,
         policy,
-        isLogical: ["AND", "OR", "NOT"].includes(ruleType),
+        isLogical: !!parsed.isLogical,
       });
-    });
+    }
   }
 
   // 匹配源 IP CIDR
@@ -704,78 +703,16 @@ export class ClashRuleEngine {
 
   // 添加获取规则数量的方法
   public getRuleCount(): number {
-    return this.rules.filter((r) => !r.ruleType.startsWith("#")).length;
+    return this.rules.length;
   }
 
   public validateRules(): ValidationResult[] {
-    const results: ValidationResult[] = [];
-
-    this.rules.forEach((rule) => {
-      const validation = this.validateRule(rule);
-      if (!validation.valid) {
-        results.push({
-          lineNumber: rule.lineNumber,
-          rule: rule.original,
-          error: validation.error ?? "Invalid rule",
-          severity: validation.severity ?? "error",
-        });
-      }
-    });
-
-    return results;
-  }
-
-  private validateRule(
-    rule: ParsedRule,
-  ): { valid: boolean; error?: string; severity?: "error" | "warning" } {
-    const { ruleType, content, policy } = rule;
-
-    // 使用 clash data sources 中定义的 rule types 常量
-    const supportedTypes = CLASH_RULE_TYPES;
-
-    if (!supportedTypes.includes(ruleType as any)) {
-      return {
-        valid: false,
-        error: `Unsupported rule type: ${ruleType}`,
-        severity: "error",
-      };
-    }
-
-    if (ruleType === "IP-CIDR") {
-      const cidrRegex = /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/;
-      if (!cidrRegex.test(content)) {
-        return {
-          valid: false,
-          error: `Invalid IPv4 CIDR format: ${content}`,
-          severity: "error",
-        };
-      }
-    }
-
-    if (ruleType === "IP-CIDR6") {
-      const cidr6Regex = /^([0-9a-fA-F:]+)\/\d{1,3}$/;
-      if (!cidr6Regex.test(content)) {
-        return {
-          valid: false,
-          error: `Invalid IPv6 CIDR format: ${content}`,
-          severity: "error",
-        };
-      }
-    }
-
-    // 使用 clash data sources 中定义的策略常量
-    const validPolicies = CLASH_POLICIES;
-    const isCustomPolicy = policy.match(/^[A-Z][A-Z0-9_-]*$/);
-
-    if (!validPolicies.includes(policy as any) && !isCustomPolicy) {
-      return {
-        valid: false,
-        error: `Invalid policy format: ${policy}`,
-        severity: "warning",
-      };
-    }
-
-    return { valid: true };
+    return validateRulesText(this.rulesText).map((issue) => ({
+      lineNumber: issue.lineNumber,
+      rule: issue.rule,
+      error: issue.message,
+      severity: issue.severity,
+    }));
   }
 }
 
