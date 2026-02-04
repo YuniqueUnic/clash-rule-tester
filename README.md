@@ -50,6 +50,14 @@ pnpm export
 
 更多细节见 `deploy/README.md`。
 
+### Vercel 构建注意（pnpm patch）
+
+本仓库使用 pnpm 的 `patchedDependencies`（用于浏览器侧 GeoIP）。Vercel 默认可能使用 pnpm@9；
+如果你本地用 pnpm@10 更新过 `pnpm-lock.yaml`，可能会在 Vercel 出现 `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`。
+
+- 推荐：在本地运行 `npx -y pnpm@9 install --no-frozen-lockfile` 生成兼容的 `pnpm-lock.yaml` 并提交
+- 或：按 Vercel 官方文档启用 corepack 来显式使用 pnpm@10：https://vercel.com/docs/deployments/configure-a-build#corepack
+
 ## 🔐 安全提示
 
 - AI Key 会保存在浏览器本地存储：
